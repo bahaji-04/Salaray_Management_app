@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+    <h2>Add New Entry</h2>
+    <form action="/add-entry" method="post">
+ 
+        <label>Category:</label>
+        <select name="category_id" required>
+            {% for category in categories %}
+                <option value="{{ category.id }}">{{ category.name }}</option>
+            {% endfor %}
+        </select>
+        <br>
+        <label>Amount:</label>
+        <input type="text" name="amount" required>
+        <br>
+        <label>Type:</label>
+        <select name="type" required>
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+        </select>
+        <br>
+        <label>Date:</label>
+        <input type="date" name="entry_date" required>
+        <br>
+        <label>Note:</label>
+        <input type="text" name="note">
+        <br>
+ 
+        <button type="submit">Add Entry</button>
+ 
+    </form>
+{% endblock %}
