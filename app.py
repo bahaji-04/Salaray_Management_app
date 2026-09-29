@@ -1,5 +1,6 @@
 
 from flask import Flask, g, request, render_template, redirect
+from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
  
 app = Flask('__name__')
@@ -17,6 +18,40 @@ def db_close(e=None):
     db = g.pop('db', None)
     if db is not None:
         db.close()
+        
+@app.route('/signup',methods=["GET","POST"])
+def signup():
+    db = get_db()
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+        hash_password = generate_password_hash(password)
+        db.execute("INSERT INTO user (username,user_password) VALUES (?,?)",(username,hash_password))
+        
+        db.commit()
+        return redirect("/login")
+
+    return render_template("signup.html")
+
+@app.route("/login",methods=["GET","POST"])
+def login():
+    db = get_db()
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+        
+        user = db.execute("""SELECT * FROM user
+                   WHERE username = ? """,(username,)).fetchone()
+        
+        if user and check_password_hash(user["user_password"],password):
+            return redirect("/")
+        else:
+            return render_template("login.html",error="Invalid password or username")
+        
+        
+    return render_template("login.html")
+        
+        
  
 @app.route('/')
 def index():
