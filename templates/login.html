@@ -19,13 +19,17 @@
         <br>
         <label>Enter Your Password</label>
         <input type="password" name="password" required>
+        <input type="checkbox" onclick="
+            var pw = document.querySelector('input[name=password]');
+            if(pw.type === 'password') {pw.type = 'text'} else {pw.type = 'password'}
+        "> Show password
         <br>
 
         <button type="submit">Login</button>
     </form>
 
-    <p>If you don't have an account 
-        Create new one please
+    <p>If you don't have an account.
+        You can 
         <a href="/signup">Sign up</a>
     </p>
 

@@ -12,6 +12,10 @@
         <br>
         <label>Password</label>
         <input type="password" name="password" required>
+        <input type="checkbox" onclick="
+            var pw = document.querySelector('input[name=password]');
+            if(pw.type === 'password') {pw.type = 'text'} else {pw.type = 'password'}
+        "> Show password
         <br>
 
         <button type="submit">Sign up</button>

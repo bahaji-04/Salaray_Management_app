@@ -1,11 +1,31 @@
-
 from flask import Flask, g, request, render_template, redirect
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
+
+from flask_login import LoginManager, UserMixin, login_user, logout_user,login_required,current_user
  
 app = Flask('__name__')
 DB_PATH = 'expenses.db'
- 
+
+app.secret_key = "your-secret-key-change-this-later"
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = "login"
+
+class User(UserMixin):
+    def __init__(self,id,username):
+        self.id = id 
+        self.username = username
+        
+@login_manager.user_loader
+def load_user(user_id):
+    db = get_db()
+    user = db.execute("SELECT * FROM user WHERE id = ?",(user_id,)).fetchone()
+    if user:
+        return User(user["id"],user["username"])
+    return None
+
+
 def get_db():
     if 'db' not in g:
         g.db = sqlite3.connect(DB_PATH)
@@ -18,6 +38,10 @@ def db_close(e=None):
     db = g.pop('db', None)
     if db is not None:
         db.close()
+        
+@app.route('/')
+def index():
+    return render_template("index.html")
         
 @app.route('/signup',methods=["GET","POST"])
 def signup():
@@ -44,7 +68,9 @@ def login():
                    WHERE username = ? """,(username,)).fetchone()
         
         if user and check_password_hash(user["user_password"],password):
-            return redirect("/")
+            user_things = User(user["id"],user["username"])
+            login_user(user_things)
+            return redirect("/spending")
         else:
             return render_template("login.html",error="Invalid password or username")
         
@@ -52,15 +78,17 @@ def login():
     return render_template("login.html")
         
         
- 
-@app.route('/')
-def index():
+
+@app.route('/spending')
+@login_required
+def spending():
     db = get_db()
     categories = db.execute("SELECT * FROM categories").fetchall()
-    entries = db.execute("SELECT entries.*, categories.name AS category_name FROM entries JOIN categories ON entries.categories_id = categories.id").fetchall()
-    return render_template("index.html", categories=categories, entries=entries)
+    entries = db.execute("SELECT entries.*, categories.name AS category_name FROM entries JOIN categories ON entries.categories_id = categories.id WHERE entries.user_id = ?",(current_user.id,)).fetchall()
+    return render_template("spending.html", categories=categories, entries=entries)
  
 @app.route("/add-entry", methods=["GET", "POST"])
+@login_required
 def add_entry():
     db = get_db()
     if request.method == "POST":
@@ -70,15 +98,16 @@ def add_entry():
         entry_date = request.form["entry_date"]
         note = request.form.get("note", "")
         db.execute("INSERT INTO entries (user_id, categories_id, amount, type, entry_date, note) VALUES (?, ?, ?, ?, ?, ?)",
-            (1, category_id, amount, entry_type, entry_date, note)
+            (current_user.id , category_id, amount, entry_type, entry_date, note)
         )
         db.commit()
-        return redirect("/")
+        return redirect("/spending")
  
     categories = db.execute("SELECT * FROM categories").fetchall()
     return render_template("add_entry.html", categories=categories)
  
 @app.route("/edit-entry/<int:entry_id>", methods=["GET", "POST"])
+@login_required
 def edit_entry(entry_id):
     db = get_db()
     if request.method == "POST":
@@ -92,17 +121,24 @@ def edit_entry(entry_id):
             (amount, category_id, entry_type, entry_date, note, entry_id)
         )
         db.commit()
-        return redirect("/")
+        return redirect("/spending")
  
     entry = db.execute("SELECT * FROM entries WHERE id = ?", (entry_id,)).fetchone()
     categories = db.execute("SELECT * FROM categories").fetchall()
     return render_template("edit_entry.html", entry=entry, categories=categories)
  
 @app.route("/delete-entry/<int:entry_id>", methods=["POST"])
+@login_required
 def delete_entry(entry_id):
     db = get_db()
     db.execute("DELETE FROM entries WHERE id=?", (entry_id,))
     db.commit()
+    return redirect("/spending")
+
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
     return redirect("/")
  
 if __name__ == "__main__":

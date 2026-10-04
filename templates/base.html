@@ -5,7 +5,12 @@
     <title>{% block title %}Salary App{% endblock %}</title>
 </head>
 <body>
-    <h1>Salary App</h1>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h1>Salary App</h1>
+        {% if current_user.is_authenticated %}
+            <p>{{ current_user.username }} | <a href="/logout">Logout</a></p>
+        {% endif %}
+    </div>
  
     {% block content %}
     {% endblock %}
