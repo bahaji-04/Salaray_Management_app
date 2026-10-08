@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %} Details of the month {% endblock %}
+
+{% block content %}
+
+    <h2> {{ month }}</h2>
+
+    <a href="/spending"><- BACK TO THE MONTHLY SUMMARY</a>
+
+    <p>Income: ${{ "%.2f"|format(total.Total_Income) }}</p>
+    <p>Expense: ${{ "%.2f"|format(total.Total_Expense) }}</p>
+    <p>Saving: ${{ "%.2f"|format(total.Total_Income - total.Total_Expense) }}</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Description</th>
+                <th>Edit</th>
+                <th>delete</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in entries %}
+
+            <tr>
+                <td>{{entry.entry_date}}</td>
+                <td>${{ "%.2f"|format(entry.amount)}}</td>
+                <td>{{ entry.note or "" }}</td>
+                <td>
+                    <a href="/edit-entry/{{ entry.id }}">Edit</a>
+                </td>
+                <td>
+                    <form action="/delete-entry/{{ entry.id }}" method="post">
+                        <button type="submit">Delete</button>
+                    </form>
+                </td>
+            </tr>
+
+
+            {% endfor %}
+        </tbody>
+        
+    </table>
+
+
+
+
+{% endblock %}

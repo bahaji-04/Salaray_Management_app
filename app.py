@@ -3,6 +3,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
 
 from flask_login import LoginManager, UserMixin, login_user, logout_user,login_required,current_user
+from collections import OrderedDict
  
 app = Flask('__name__')
 DB_PATH = 'expenses.db'
@@ -77,15 +78,38 @@ def login():
         
     return render_template("login.html")
         
-        
 
 @app.route('/spending')
 @login_required
 def spending():
     db = get_db()
+    months = db.execute(""" SELECT substr(entry_date,1,7) AS Month, 
+                        SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) AS Total_Income,
+                        SUM (CASE WHEN type = 'expense' THEN amount ELSE 0 END) AS Total_Expense
+                        FROM entries 
+                        WHERE user_id = ?
+                        GROUP BY substr(entry_date,1,7) """,(current_user.id,)).fetchall()
+                        
+                          
+    return render_template("spending.html", months = months)
+
+@app.route("/spending/<month>")
+@login_required
+def month_detail(month):
+    db = get_db()
     categories = db.execute("SELECT * FROM categories").fetchall()
-    entries = db.execute("SELECT entries.*, categories.name AS category_name FROM entries JOIN categories ON entries.categories_id = categories.id WHERE entries.user_id = ?",(current_user.id,)).fetchall()
-    return render_template("spending.html", categories=categories, entries=entries)
+    entries = db.execute("""SELECT entries.*, categories.name AS category_name 
+                         FROM entries JOIN categories ON entries.categories_id = categories.id 
+                         WHERE user_id = ? AND substr(entry_date,1,7) = ?
+                         ORDER BY entry_date DESC """,(current_user.id, month )).fetchall()
+    
+    total = db.execute(""" SELECT SUM(CASE WHEN type = 'income' THEN amount else 0 END) AS Total_Income,
+                       SUM(CASE WHEN type = 'expense' THEN amount else 0 END ) AS Total_Expense
+                       FROM entries
+                       WHERE substr(entry_date,1,7) = ? AND user_id = ? 
+                       ORDER BY entry_date ASC""",(month,current_user.id)).fetchone()
+    
+    return render_template("month_detail.html", categories = categories, entries = entries, month = month, total = total)
  
 @app.route("/add-entry", methods=["GET", "POST"])
 @login_required
