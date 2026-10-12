@@ -36,4 +36,6 @@
 {% else %}
   <p>No entries yet. <a href="{{ url_for('add_entry') }}">Add your first entry</a>.</p>
 {% endif %}
+<h1> Saving Chart</h1>
+<div>{{saving_chart | safe}}</div>
 {% endblock %}

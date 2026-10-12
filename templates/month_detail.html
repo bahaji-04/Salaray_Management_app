@@ -12,6 +12,7 @@
     <p>Expense: ${{ "%.2f"|format(total.Total_Expense) }}</p>
     <p>Saving: ${{ "%.2f"|format(total.Total_Income - total.Total_Expense) }}</p>
 
+
     <table>
         <thead>
             <tr>
@@ -46,6 +47,41 @@
     </table>
 
 
+    <h1> Statistics of your categories </h1>
+    <div>{{chart | safe }}</div>
+
+    {% for category,amount in total_category.items() %}
+        <p>{{category}}: ${{"%.2f"|format(amount)}} </p>
+    {% endfor %}
+
+    <h1> The top three expenses</h1>
+    <div>{{chart2 | safe}}</div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Category</th>
+                <th>Amount</th>
+                <th>Description </th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for _,row in top_3.iterrows() %}
+            <tr>
+                <td>{{ row.entry_date}}</td>
+                <td>{{ row.category_name }}</td>
+                <td>{{ row.amount }}</td>
+                <td>{{ row.note }}</td>
+            </tr>
+
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h3>Daily Average Spending</h3>
+
+    <p>${{"%.2f"|format(daily_avg_expense)}}</p>
 
 
 {% endblock %}

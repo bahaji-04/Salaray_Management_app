@@ -5,6 +5,11 @@ import sqlite3
 from flask_login import LoginManager, UserMixin, login_user, logout_user,login_required,current_user
 from collections import OrderedDict
  
+import pandas as pd
+import plotly
+import plotly.graph_objects as go
+
+ 
 app = Flask('__name__')
 DB_PATH = 'expenses.db'
 
@@ -89,9 +94,23 @@ def spending():
                         FROM entries 
                         WHERE user_id = ?
                         GROUP BY substr(entry_date,1,7) """,(current_user.id,)).fetchall()
-                        
-                          
-    return render_template("spending.html", months = months)
+    
+    if months:
+        df = pd.DataFrame(months,columns=[key for key in months[0].keys()])
+        
+        total_saving = df["Total_Income"] - df["Total_Expense"]
+        
+        saving_fig = go.Figure(data=[
+            go.Bar(name="Income", x=df["Month"].tolist(), y=df["Total_Income"].tolist()),
+            go.Bar(name="Saving", x=df["Month"].tolist(), y=total_saving.tolist())
+        ])
+        saving_chart = plotly.io.to_html(saving_fig,full_html=False)
+        
+    else:
+        total_saving = []
+        saving_chart = ""
+                           
+    return render_template("spending.html", months = months, total_saving = total_saving, saving_chart = saving_chart)
 
 @app.route("/spending/<month>")
 @login_required
@@ -109,7 +128,47 @@ def month_detail(month):
                        WHERE substr(entry_date,1,7) = ? AND user_id = ? 
                        ORDER BY entry_date ASC""",(month,current_user.id)).fetchone()
     
-    return render_template("month_detail.html", categories = categories, entries = entries, month = month, total = total)
+    # making the dataframe from the database 
+    if entries:
+        df = pd.DataFrame(entries,columns=[key for key in entries[0].keys()])
+        
+        expenses_only = df[df["type"] == "expense"]
+        # how much I spent in every category
+        total_category = expenses_only.groupby("category_name")["amount"].sum()
+        
+        #top 3 expenses 
+        top_3 = expenses_only.nlargest(3, "amount")
+        
+        #avg daily spent
+        total_expense = expenses_only["amount"].sum()
+        uniq_days = expenses_only["entry_date"].nunique() # returns a number not like unique() returns a list
+        
+        if uniq_days > 0:
+            daily_avg_expense = total_expense / uniq_days
+        else: 
+            daily_avg_expense = 0
+            
+        # bar chart of catefories
+        fig = go.Bar(x=total_category.index.tolist(),y=total_category.values.tolist())
+        chart = plotly.io.to_html(go.Figure(data=[fig]),full_html=False)   
+        
+        fig2 = go.Pie(labels=top_3["category_name"].tolist(),values=top_3["amount"].tolist())
+        chart2 = plotly.io.to_html(go.Figure(data=[fig2]),full_html=False)
+        
+         
+    else:
+        total_category = {}
+        top_3 = []
+        daily_avg_expense = 0
+        chart = ""
+        chart2 = ""
+
+    
+        
+    return render_template("month_detail.html", categories = categories, entries = entries,
+                           month = month,total = total, total_category = total_category,
+                           top_3 = top_3, daily_avg_expense = daily_avg_expense,
+                           chart = chart, chart2 = chart2 )
  
 @app.route("/add-entry", methods=["GET", "POST"])
 @login_required

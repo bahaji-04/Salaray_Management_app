@@ -3,7 +3,7 @@ import random
 
 conn = sqlite3.connect('expenses.db')
 
-user_id = 4  # bahaji
+user_id = 1  # bahaji
 
 # Category IDs from your schema
 # 1=Salary, 2=Freelance, 3=Rent, 4=Food, 5=Utilities, 6=Transport, 7=Other
