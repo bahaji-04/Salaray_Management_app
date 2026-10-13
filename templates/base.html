@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head>   
     <meta charset="UTF-8">
     <title>{% block title %}Salary App{% endblock %}</title>
 </head>
@@ -9,11 +9,26 @@
         <h1>Salary App</h1>
         {% if current_user.is_authenticated %}
             <p>{{ current_user.username }} | <a href="/logout">Logout</a></p>
-        {% endif %}
+        {% endif %}      
     </div>
- 
     {% block content %}
     {% endblock %}
+
+    <div>
+
+        {% if current_user.is_authenticated %}
+
+            <nav>
+                <a href="/spending">Home</a>
+                <a href="/add-entry">+</a>
+                <a href="/goal">Goal</a>
+                <a href="/account">Account</a>
+            </nav>
+
+        {% endif %}
+
+    </div>
+ 
  
 </body>
 </html>

@@ -47,6 +47,8 @@ def db_close(e=None):
         
 @app.route('/')
 def index():
+    if current_user.is_authenticated:
+        return redirect("/spending")
     return render_template("index.html")
         
 @app.route('/signup',methods=["GET","POST"])
@@ -209,6 +211,24 @@ def edit_entry(entry_id):
     entry = db.execute("SELECT * FROM entries WHERE id = ?", (entry_id,)).fetchone()
     categories = db.execute("SELECT * FROM categories").fetchall()
     return render_template("edit_entry.html", entry=entry, categories=categories)
+
+@app.route("/goal",methods=["GET","POST"])
+@login_required
+def goal():
+    db = get_db()
+    if request.method == "POST":
+        name = request.form["name"]
+        target_amount = request.form["target_amount"]
+        db.execute("""INSERT INTO targets (user_id, name, target_amount)
+                   VALUES (?,?,?)""",(current_user.id,name,target_amount))
+        
+        db.commit()
+        return redirect("/spending")
+
+    goals = db.execute(""" SELECT * FROM targets 
+                       WHERE user_id = ? """,(current_user.id,)).fetchall()
+    return render_template("goal.html", goals = goals)
+    
  
 @app.route("/delete-entry/<int:entry_id>", methods=["POST"])
 @login_required
@@ -217,6 +237,7 @@ def delete_entry(entry_id):
     db.execute("DELETE FROM entries WHERE id=?", (entry_id,))
     db.commit()
     return redirect("/spending")
+
 
 @app.route("/logout")
 @login_required
