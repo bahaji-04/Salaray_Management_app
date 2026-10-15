@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %} Goal {% endblock %}
+
+{% block content %}
+    <h2> Create New Goal</h2>
+    <form method="post"action="/goal">
+        <br>
+        <label> What is your goal. </label>
+        <input type="text" name="name" required>
+        <br>
+        <label> Your Target Amount</label>
+        <input type="text" name="target_amount" required>
+
+        <input type="submit" name="submit" >
+    </form>
+
+    {% for goal in goals %}
+    <div style="border: 1px solid #ccc; padding: 15px; margin: 15px 0; border-radius: 5px;">
+        <p>Target name: {{ goal.name }}</p>
+        <p>Target amount: ${{ "%.2f"|format(goal.target_amount) }}</p>
+        <p>Your Progress: {{ "%.1f"|format(goal.current_amount / goal.target_amount * 100) }}%</p>
+        <p>For Details <a href="/goal/{{ goal.id }}">Click Here</a></p>
+
+        <form method="post" action="/goal/{{ goal.id }}/contribution">
+            <label>How much you saved</label>
+            <input type="text" name="amount" required>
+            <input type="date" name="contribution_date" required>
+            <input type="submit" value="Add">
+        </form>
+    </div>
+    {% endfor %}    
+
+
+{% endblock %}

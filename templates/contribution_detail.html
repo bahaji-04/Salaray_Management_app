@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %} Your Saving Detail {% endblock %}
+
+{% block content %}
+    <h1>Your target is {{ target.name }}</h1>
+
+    <h2>Your current amount of saving is {{"%.2f"|format(target.current_amount) }}</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th> Entry Date </th>
+                <th> Amount </th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for value in contribution %}
+                <tr>
+                    <td>{{ value.contribution_date }}</td>
+                    <td>{{"%.2f"|format(value.amount) }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <a href="/goal">Return to goal section.</a>
+
+{% endblock %}

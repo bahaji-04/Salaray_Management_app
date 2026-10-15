@@ -223,11 +223,36 @@ def goal():
                    VALUES (?,?,?)""",(current_user.id,name,target_amount))
         
         db.commit()
-        return redirect("/spending")
+        return redirect("/goal")
 
     goals = db.execute(""" SELECT * FROM targets 
                        WHERE user_id = ? """,(current_user.id,)).fetchall()
     return render_template("goal.html", goals = goals)
+
+@app.route("/goal/<int:goal_id>/contribution", methods=["POST"])
+@login_required
+def contribution(goal_id):
+    db = get_db()
+    amount = request.form["amount"]
+    contribution_date = request.form["contribution_date"]
+    db.execute(""" INSERT INTO contribution (goal_id,amount,contribution_date) 
+               VALUES (?,?,?) """,(goal_id,amount,contribution_date))
+    db.execute(""" UPDATE targets SET 
+               current_amount = current_amount + ?
+               WHERE id = ? """,(amount,goal_id))
+    db.commit()
+    
+    return redirect("/goal")
+
+@app.route("/goal/<int:goal_id>",methods=["GET"])
+@login_required
+def contribution_detail(goal_id):
+    db = get_db()
+    target = db.execute("SELECT * FROM targets WHERE id = ? ",(goal_id,)).fetchone()
+    contribution = db.execute("SELECT * FROM contribution WHERE goal_id = ? ORDER BY time_created DESC",(goal_id,)).fetchall()
+    
+    return render_template("contribution_detail.html",target = target, contribution=contribution )
+          
     
  
 @app.route("/delete-entry/<int:entry_id>", methods=["POST"])
