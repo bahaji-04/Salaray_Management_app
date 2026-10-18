@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %} Account {% endblock %}
+
+{% block content %} 
+    <p>Hello {{ user.username }}</p>
+    <br>
+    <p>This account created at({{user.time_created}})</p>
+    <br>
+    <p><a href="/account/user-password">Change password</a></p>
+    <br>
+    <form action="/account/delete" method="post">
+        <button type="submit" onclick="return confirm('Are you sure? This cannot be undone.')"> Delete Account</button>
+    </form>    
+
+{% endblock %}

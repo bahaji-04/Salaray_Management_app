@@ -54,6 +54,8 @@ def index():
 @app.route('/signup',methods=["GET","POST"])
 def signup():
     db = get_db()
+    if current_user.is_authenticated:
+        return redirect("/spending")
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
@@ -68,6 +70,8 @@ def signup():
 @app.route("/login",methods=["GET","POST"])
 def login():
     db = get_db()
+    if current_user.is_authenticated:
+        return redirect("/spending")
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
@@ -263,6 +267,49 @@ def delete_entry(entry_id):
     db.commit()
     return redirect("/spending")
 
+
+@app.route("/account",methods=["GET","POST"])
+@login_required
+def account():
+    db = get_db()
+    
+    user = db.execute("SELECT * FROM user WHERE id = ?",(current_user.id,)).fetchone()
+    
+    return render_template("account.html",user = user)
+
+@app.route("/account/user-password", methods=["GET","POST"])
+@login_required
+def change_password():
+    db = get_db()
+    if request.method == "POST":
+        old_password = request.form["old_password"]
+        new_password = request.form["new_password"]
+        
+        user = db.execute("SELECT * FROM user WHERE id = ?",(current_user.id,)).fetchone()
+        
+        if check_password_hash(user["user_password"],old_password):
+            new = generate_password_hash(new_password)
+            db.execute("UPDATE user SET user_password=? WHERE id = ?",(new,current_user.id))
+            db.commit()
+            return redirect("/account")
+        else:
+            return render_template("change_password.html", error="Old password is incorrect")
+        
+        
+    return render_template("change_password.html")
+
+@app.route("/account/delete",methods=["POST"])
+@login_required
+def delete_account():
+    db = get_db()
+    db.execute("DELETE FROM entries WHERE user_id = ?",(current_user.id,))
+    db.execute("DELETE FROM targets WHERE user_id = ? ",(current_user.id,))
+    db.execute("DELETE FROM user WHERE id = ? ",(current_user.id,))
+    
+    db.commit()
+    logout_user()
+    
+    return redirect("/")
 
 @app.route("/logout")
 @login_required
