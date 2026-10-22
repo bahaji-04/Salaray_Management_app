@@ -13,7 +13,30 @@ import plotly.graph_objects as go
 app = Flask('__name__')
 DB_PATH = 'expenses.db'
 
-app.secret_key = "your-secret-key-change-this-later"
+# Forest design colors (same as static/style.css)
+DARK_GREEN = "#0b4a37"
+MID_GREEN = "#3e9c76"
+LIGHT_GREEN = "#a9d3bf"
+TEXT_GREEN = "#587066"
+LINE_GREEN = "#d7e4dd"
+
+def style_chart(fig, height=320):
+    # make plotly charts match the Forest design
+    fig.update_layout(
+        height=height,
+        margin=dict(l=10, r=10, t=10, b=10),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Manrope, system-ui, sans-serif", color=TEXT_GREEN, size=13),
+        legend=dict(orientation="h", y=1.1, x=0),
+        bargap=0.35,
+    )
+    # type="category" keeps "2026-10" as a label instead of turning it into a date like "00:00:00 Oct 1, 2026"
+    fig.update_xaxes(showgrid=False, linecolor=LINE_GREEN, type="category")
+    fig.update_yaxes(gridcolor=LINE_GREEN, zeroline=False, tickprefix="$")
+    return plotly.io.to_html(fig, full_html=False, config={"displayModeBar": False, "responsive": True})
+
+app.secret_key = "d61fe446d8a185584b5b68723124adc2"
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
@@ -59,6 +82,9 @@ def signup():
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
+        check_username = db.execute("SELECT username FROM user WHERE username = ?",(username,)).fetchone()
+        if check_username : 
+            return render_template("signup.html",error = "this username already exits, please choose another one.")
         hash_password = generate_password_hash(password)
         db.execute("INSERT INTO user (username,user_password) VALUES (?,?)",(username,hash_password))
         
@@ -107,10 +133,10 @@ def spending():
         total_saving = df["Total_Income"] - df["Total_Expense"]
         
         saving_fig = go.Figure(data=[
-            go.Bar(name="Income", x=df["Month"].tolist(), y=df["Total_Income"].tolist()),
-            go.Bar(name="Saving", x=df["Month"].tolist(), y=total_saving.tolist())
+            go.Bar(name="Income", x=df["Month"].tolist(), y=df["Total_Income"].tolist(), marker_color=LIGHT_GREEN),
+            go.Bar(name="Saving", x=df["Month"].tolist(), y=total_saving.tolist(), marker_color=DARK_GREEN)
         ])
-        saving_chart = plotly.io.to_html(saving_fig,full_html=False)
+        saving_chart = style_chart(saving_fig)
         
     else:
         total_saving = []
@@ -155,11 +181,15 @@ def month_detail(month):
             daily_avg_expense = 0
             
         # bar chart of catefories
-        fig = go.Bar(x=total_category.index.tolist(),y=total_category.values.tolist())
-        chart = plotly.io.to_html(go.Figure(data=[fig]),full_html=False)   
-        
-        fig2 = go.Pie(labels=top_3["category_name"].tolist(),values=top_3["amount"].tolist())
-        chart2 = plotly.io.to_html(go.Figure(data=[fig2]),full_html=False)
+        fig = go.Bar(x=total_category.index.tolist(),y=total_category.values.tolist(),
+                     marker_color=DARK_GREEN, text=total_category.values.round(0).tolist(),
+                     texttemplate="$%{text:,.0f}", textposition="outside", cliponaxis=False)
+        chart = style_chart(go.Figure(data=[fig]))
+
+        fig2 = go.Pie(labels=top_3["category_name"].tolist(),values=top_3["amount"].tolist(),
+                      marker=dict(colors=[DARK_GREEN, MID_GREEN, LIGHT_GREEN], line=dict(color="#ffffff", width=2)),
+                      sort=False)
+        chart2 = style_chart(go.Figure(data=[fig2]), height=260)
         
          
     else:

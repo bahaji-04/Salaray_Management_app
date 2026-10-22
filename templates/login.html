@@ -1,36 +1,34 @@
 {% extends "base.html" %}
 
-{% block title %} Login Page {% endblock %}
+{% block title %}Log in · Salary App{% endblock %}
 
 {% block content %}
+<div class="auth">
+    <form class="box" action="/login" method="post">
+        <div>
+            <h1>Log in</h1>
+            <p class="muted">Welcome back. Your months are waiting.</p>
+        </div>
 
-    <h2>Login Page</h2>
+        {% if error %}
+            <div class="err">{{ error }}</div>
+        {% endif %}
 
-    {% if error %}
-        <p style="color: red;">{{ error }}</p>
-    {% endif %}
+        <div class="field">
+            <label for="username">Username</label>
+            <input id="username" type="text" name="username" required>
+        </div>
+        <div class="field">
+            <label for="password">Password</label>
+            <input id="password" type="password" name="password" required>
+        </div>
+        <label class="check">
+            <input type="checkbox" onclick="var pw = document.getElementById('password'); pw.type = pw.type === 'password' ? 'text' : 'password';">
+            Show password
+        </label>
 
-    <form action="/login" method="post">
-        <br>
-        <label>User name</label>
-        <input type="text" name="username" required>
-        <br>
-
-        <br>
-        <label>Enter Your Password</label>
-        <input type="password" name="password" required>
-        <input type="checkbox" onclick="
-            var pw = document.querySelector('input[name=password]');
-            if(pw.type === 'password') {pw.type = 'text'} else {pw.type = 'password'}
-        "> Show password
-        <br>
-
-        <button type="submit">Login</button>
+        <button class="btn" type="submit">Log in</button>
+        <p class="muted">No account yet? <a href="/signup">Sign up</a></p>
     </form>
-
-    <p>If you don't have an account.
-        You can 
-        <a href="/signup">Sign up</a>
-    </p>
-
+</div>
 {% endblock %}

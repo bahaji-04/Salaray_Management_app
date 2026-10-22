@@ -1,34 +1,48 @@
 {% extends "base.html" %}
-{% block title %} Goal {% endblock %}
+
+{% block title %}Goals · Salary App{% endblock %}
 
 {% block content %}
-    <h2> Create New Goal</h2>
-    <form method="post"action="/goal">
-        <br>
-        <label> What is your goal. </label>
-        <input type="text" name="name" required>
-        <br>
-        <label> Your Target Amount</label>
-        <input type="text" name="target_amount" required>
+<div class="page-head">
+    <div>
+        <div class="eyebrow">Savings</div>
+        <h1>Goals</h1>
+    </div>
+</div>
 
-        <input type="submit" name="submit" >
-    </form>
-
+<div class="grid2">
     {% for goal in goals %}
-    <div style="border: 1px solid #ccc; padding: 15px; margin: 15px 0; border-radius: 5px;">
-        <p>Target name: {{ goal.name }}</p>
-        <p>Target amount: ${{ "%.2f"|format(goal.target_amount) }}</p>
-        <p>Your Progress: {{ "%.1f"|format(goal.current_amount / goal.target_amount * 100) }}%</p>
-        <p>For Details <a href="/goal/{{ goal.id }}">Click Here</a></p>
-
+    {% set pct = goal.current_amount / goal.target_amount * 100 if goal.target_amount else 0 %}
+    <div class="panel goal">
+        <div class="top">
+            <h3>{{ goal.name }}</h3>
+            <span class="muted num">{{ "%.1f"|format(pct) }}%</span>
+        </div>
+        <div class="progress"><b style="width: {{ [pct, 100]|min }}%"></b></div>
+        <div class="top">
+            <span><span class="num">${{ "{:,.2f}".format(goal.current_amount) }}</span>
+                <span class="muted">of ${{ "{:,.2f}".format(goal.target_amount) }}</span></span>
+            <a href="/goal/{{ goal.id }}">Details →</a>
+        </div>
         <form method="post" action="/goal/{{ goal.id }}/contribution">
-            <label>How much you saved</label>
-            <input type="text" name="amount" required>
-            <input type="date" name="contribution_date" required>
-            <input type="submit" value="Add">
+            <input type="text" inputmode="decimal" name="amount" placeholder="Amount saved" aria-label="Amount saved" required>
+            <input type="date" name="contribution_date" aria-label="Date" required>
+            <button class="btn sm" type="submit">Add</button>
         </form>
     </div>
-    {% endfor %}    
+    {% endfor %}
 
-
+    <form class="panel goal new" method="post" action="/goal">
+        <h3>New goal</h3>
+        <div class="field">
+            <label for="goal-name">What are you saving for?</label>
+            <input id="goal-name" type="text" name="name" placeholder="Holiday in Lisbon" required>
+        </div>
+        <div class="field">
+            <label for="goal-target">Target amount</label>
+            <input id="goal-target" type="text" inputmode="decimal" name="target_amount" placeholder="2000" required>
+        </div>
+        <button class="btn" type="submit">Create goal</button>
+    </form>
+</div>
 {% endblock %}

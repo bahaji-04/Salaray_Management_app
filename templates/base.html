@@ -1,34 +1,58 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>   
+<head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Salary App{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h1>Salary App</h1>
-        {% if current_user.is_authenticated %}
-            <p>{{ current_user.username }} | <a href="/logout">Logout</a></p>
-        {% endif %}      
-    </div>
-    {% block content %}
-    {% endblock %}
+{% if current_user.is_authenticated %}
+    {% set path = request.path %}
+    <div class="app">
+        <aside class="sidebar">
+            <a class="brand" href="/spending"><i>$</i>Salary App</a>
 
-    <div>
-
-        {% if current_user.is_authenticated %}
-
-            <nav>
-                <a href="/spending">Home</a>
-                <a href="/add-entry">+</a>
-                <a href="/goal">Goal</a>
-                <a href="/account">Account</a>
+            <nav class="nav">
+                <a href="/spending" class="{{ 'on' if path.startswith('/spending') }}">Home</a>
+                <a href="/add-entry" class="plus">+ Add</a>
+                <a href="/goal" class="{{ 'on' if path.startswith('/goal') }}">Goals</a>
+                <a href="/account" class="{{ 'on' if path.startswith('/account') }}">Account</a>
             </nav>
 
-        {% endif %}
+            <div class="who">
+                <span class="avatar">{{ current_user.username[0]|upper }}</span>
+                <span class="name">{{ current_user.username }}</span>
+                <a href="/logout">Logout</a>
+            </div>
+        </aside>
 
+        <main class="content">
+            {% block content %}
+            {% endblock %}
+        </main>
     </div>
- 
- 
+{% else %}
+    <header class="topbar">
+        <a class="brand" href="/"><i>$</i>Salary App</a>
+        <a class="btn on-dark sm" href="/login">Log in</a>
+    </header>
+    <main>
+        {{ self.content() }}
+    </main>
+{% endif %}
+
+<script>
+    // plotly charts are drawn before the page finishes its layout, so fit them to their cards afterwards
+    window.addEventListener("load", function () {
+        if (!window.Plotly) return;
+        document.querySelectorAll(".js-plotly-plot").forEach(function (plot) {
+            Plotly.Plots.resize(plot);
+        });
+    });
+</script>
 </body>
 </html>

@@ -1,16 +1,29 @@
 {% extends "base.html" %}
 
-{% block title %} Account {% endblock %}
+{% block title %}Account · Salary App{% endblock %}
 
-{% block content %} 
-    <p>Hello {{ user.username }}</p>
-    <br>
-    <p>This account created at({{user.time_created}})</p>
-    <br>
-    <p><a href="/account/user-password">Change password</a></p>
-    <br>
+{% block content %}
+<div class="page-head">
+    <div>
+        <div class="eyebrow">Account</div>
+        <h1>Hello, {{ user.username }}</h1>
+    </div>
+</div>
+
+<div class="panel profile">
+    <span class="avatar big">{{ user.username[0]|upper }}</span>
+    <div class="grow">
+        <div style="font-weight: 700;">{{ user.username }}</div>
+        <div class="muted" style="font-size: 14px;">Member since {{ user.time_created[:10] }}</div>
+    </div>
+    <a class="btn ghost" href="/account/user-password">Change password</a>
+</div>
+
+<div class="panel danger-zone">
+    <h2>Delete account</h2>
+    <p class="muted" style="margin-bottom: 14px;">This removes your entries, goals and login for good. It can't be undone.</p>
     <form action="/account/delete" method="post">
-        <button type="submit" onclick="return confirm('Are you sure? This cannot be undone.')"> Delete Account</button>
-    </form>    
-
+        <button class="btn danger" type="submit" onclick="return confirm('Are you sure? This cannot be undone.')">Delete account</button>
+    </form>
+</div>
 {% endblock %}

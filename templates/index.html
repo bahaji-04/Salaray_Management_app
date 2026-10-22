@@ -1,17 +1,15 @@
 {% extends "base.html" %}
 
-{% block title %} Welcome {% endblock %}
+{% block title %}Welcome · Salary App{% endblock %}
 
 {% block content %}
-    
-
-    <h2> Welcome to Salay App </h2>
-    <p> Track your Income and Expense easily. </p>
-
-    <a href="/login">Login Page</a>
-    <br><br>
-    <a href="/signup">Sign up</a>
-    
-
-
+<section class="hero">
+    <div class="eyebrow">Personal salary &amp; expense manager</div>
+    <h1>See where every payslip goes.</h1>
+    <p>Log income and expenses, review each month by category, and put savings toward goals you set.</p>
+    <div class="ctas">
+        <a class="btn" href="/signup">Create an account</a>
+        <a class="btn ghost" href="/login">Log in</a>
+    </div>
+</section>
 {% endblock %}

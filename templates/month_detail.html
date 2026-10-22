@@ -1,87 +1,92 @@
 {% extends "base.html" %}
 
-{% block title %} Details of the month {% endblock %}
+{% block title %}{{ month }} · Salary App{% endblock %}
 
 {% block content %}
+{% set income = total.Total_Income or 0 %}
+{% set expense = total.Total_Expense or 0 %}
 
-    <h2> {{ month }}</h2>
+<a class="back" href="/spending">← Monthly summary</a>
 
-    <a href="/spending"><- BACK TO THE MONTHLY SUMMARY</a>
+<div class="page-head">
+    <div>
+        <div class="eyebrow">Month detail</div>
+        <h1>{{ month }}</h1>
+    </div>
+    <a href="{{ url_for('add_entry') }}" class="btn ghost">+ Add entry</a>
+</div>
 
-    <p>Income: ${{ "%.2f"|format(total.Total_Income) }}</p>
-    <p>Expense: ${{ "%.2f"|format(total.Total_Expense) }}</p>
-    <p>Saving: ${{ "%.2f"|format(total.Total_Income - total.Total_Expense) }}</p>
+<div class="stats">
+    <div class="stat"><div class="k">Saved</div><div class="v">${{ "{:,.2f}".format(income - expense) }}</div></div>
+    <div class="stat"><div class="k">Income</div><div class="v pos">${{ "{:,.2f}".format(income) }}</div></div>
+    <div class="stat"><div class="k">Expense</div><div class="v neg">${{ "{:,.2f}".format(expense) }}</div></div>
+    <div class="stat"><div class="k">Daily average</div><div class="v">${{ "{:,.2f}".format(daily_avg_expense) }}</div></div>
+</div>
 
+{% if entries %}
+<div class="grid2">
+    <div class="panel">
+        <h2>Spending by category</h2>
+        <div class="chart">{{ chart | safe }}</div>
+    </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Amount</th>
-                <th>Description</th>
-                <th>Edit</th>
-                <th>delete</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for entry in entries %}
-
-            <tr>
-                <td>{{entry.entry_date}}</td>
-                <td>${{ "%.2f"|format(entry.amount)}}</td>
-                <td>{{ entry.note or "" }}</td>
-                <td>
-                    <a href="/edit-entry/{{ entry.id }}">Edit</a>
-                </td>
-                <td>
-                    <form action="/delete-entry/{{ entry.id }}" method="post">
-                        <button type="submit">Delete</button>
-                    </form>
-                </td>
-            </tr>
-
-
+    <div class="panel">
+        <h2>Top 3 expenses</h2>
+        <div class="chart">{{ chart2 | safe }}</div>
+        <div class="top3">
+            {% for _, row in top_3.iterrows() %}
+            <div class="row">
+                <span class="rank">{{ loop.index }}</span>
+                <div class="grow">
+                    <div>{{ row.note or row.category_name }}</div>
+                    <div class="meta">{{ row.category_name }} · {{ row.entry_date }}</div>
+                </div>
+                <span class="num neg">${{ "{:,.2f}".format(row.amount) }}</span>
+            </div>
             {% endfor %}
-        </tbody>
-        
-    </table>
+        </div>
+    </div>
+</div>
+{% endif %}
 
-
-    <h1> Statistics of your categories </h1>
-    <div>{{chart | safe }}</div>
-
-    {% for category,amount in total_category.items() %}
-        <p>{{category}}: ${{"%.2f"|format(amount)}} </p>
-    {% endfor %}
-
-    <h1> The top three expenses</h1>
-    <div>{{chart2 | safe}}</div>
-
-    <table>
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Category</th>
-                <th>Amount</th>
-                <th>Description </th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for _,row in top_3.iterrows() %}
-            <tr>
-                <td>{{ row.entry_date}}</td>
-                <td>{{ row.category_name }}</td>
-                <td>{{ row.amount }}</td>
-                <td>{{ row.note }}</td>
-            </tr>
-
-            {% endfor %}
-        </tbody>
-    </table>
-
-    <h3>Daily Average Spending</h3>
-
-    <p>${{"%.2f"|format(daily_avg_expense)}}</p>
-
-
+<div class="panel">
+    <h2>Entries <span class="muted">{{ entries|length }}</span></h2>
+    {% if entries %}
+    <div class="tablewrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Category</th>
+                    <th>Note</th>
+                    <th class="r">Amount</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in entries %}
+                <tr>
+                    <td class="num">{{ entry.entry_date }}</td>
+                    <td><span class="chip {{ 'inc' if entry.type == 'income' }}">{{ entry.category_name }}</span></td>
+                    <td class="wrap">{{ entry.note or "" }}</td>
+                    <td class="r {{ 'pos' if entry.type == 'income' else 'neg' }}">
+                        {{ '+' if entry.type == 'income' else '−' }}${{ "{:,.2f}".format(entry.amount) }}
+                    </td>
+                    <td>
+                        <div class="actions">
+                            <a class="btn ghost sm" href="/edit-entry/{{ entry.id }}">Edit</a>
+                            <form action="/delete-entry/{{ entry.id }}" method="post">
+                                <button class="btn ghost danger sm" type="submit">Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+        <p class="muted">No entries this month.</p>
+    {% endif %}
+</div>
 {% endblock %}

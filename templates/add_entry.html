@@ -1,32 +1,50 @@
 {% extends "base.html" %}
+
+{% block title %}Add Entry · Salary App{% endblock %}
+
 {% block content %}
-    <h2>Add New Entry</h2>
-    <form action="/add-entry" method="post">
- 
-        <label>Category:</label>
-        <select name="category_id" required>
+<div class="page-head">
+    <div>
+        <div class="eyebrow">New entry</div>
+        <h1>Add income or expense</h1>
+    </div>
+</div>
+
+<form class="panel form" action="/add-entry" method="post">
+    <div class="seg">
+        <input class="inc" type="radio" name="type" id="type-income" value="income" required>
+        <label for="type-income">Income</label>
+        <input class="exp" type="radio" name="type" id="type-expense" value="expense" checked>
+        <label for="type-expense">Expense</label>
+    </div>
+
+    <div class="field">
+        <label for="amount">Amount</label>
+        <input id="amount" class="amount-in" type="text" inputmode="decimal" name="amount" placeholder="0.00" required>
+    </div>
+
+    <div class="field">
+        <label for="category">Category</label>
+        <select id="category" name="category_id" required>
             {% for category in categories %}
                 <option value="{{ category.id }}">{{ category.name }}</option>
             {% endfor %}
         </select>
-        <br>
-        <label>Amount:</label>
-        <input type="text" name="amount" required>
-        <br>
-        <label>Type:</label>
-        <select name="type" required>
-            <option value="income">Income</option>
-            <option value="expense">Expense</option>
-        </select>
-        <br>
-        <label>Date:</label>
-        <input type="date" name="entry_date" required>
-        <br>
-        <label>Note:</label>
-        <input type="text" name="note">
-        <br>
- 
-        <button type="submit">Add Entry</button>
- 
-    </form>
+    </div>
+
+    <div class="field">
+        <label for="entry_date">Date</label>
+        <input id="entry_date" type="date" name="entry_date" required>
+    </div>
+
+    <div class="field">
+        <label for="note">Note</label>
+        <input id="note" type="text" name="note" placeholder="Grocery store">
+    </div>
+
+    <div class="form-actions">
+        <button class="btn" type="submit">Save entry</button>
+        <a class="btn ghost" href="/spending">Cancel</a>
+    </div>
+</form>
 {% endblock %}
