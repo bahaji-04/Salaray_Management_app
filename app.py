@@ -1,4 +1,4 @@
-from flask import Flask, g, request, render_template, redirect
+from flask import Flask, g, request, render_template, redirect, abort
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
 
@@ -236,14 +236,17 @@ def edit_entry(entry_id):
         entry_date = request.form["entry_date"]
         note = request.form.get("note", "")
         db.execute(
-            "UPDATE entries SET amount=?, categories_id=?, type=?, entry_date=?, note=? WHERE id=?",
-            (amount, category_id, entry_type, entry_date, note, entry_id)
+            "UPDATE entries SET amount=?, categories_id=?, type=?, entry_date=?, note=? WHERE id=? and user_id=?",
+            (amount, category_id, entry_type, entry_date, note, entry_id, current_user.id)
         )
         db.commit()
         return redirect("/spending")
  
-    entry = db.execute("SELECT * FROM entries WHERE id = ?", (entry_id,)).fetchone()
+    entry = db.execute("SELECT * FROM entries WHERE user_id = ? and id = ?", (current_user.id, entry_id)).fetchone()
+    if not entry:
+        abort(404)
     categories = db.execute("SELECT * FROM categories").fetchall()
+    
     return render_template("edit_entry.html", entry=entry, categories=categories)
 
 @app.route("/goal",methods=["GET","POST"])
@@ -269,11 +272,15 @@ def contribution(goal_id):
     db = get_db()
     amount = request.form["amount"]
     contribution_date = request.form["contribution_date"]
+    target = db.execute("SELECT * FROM targets WHERE id = ? AND user_id = ?",(goal_id,current_user.id)).fetchone()
+    if not target:
+        abort(404)
+        
     db.execute(""" INSERT INTO contribution (goal_id,amount,contribution_date) 
                VALUES (?,?,?) """,(goal_id,amount,contribution_date))
     db.execute(""" UPDATE targets SET 
                current_amount = current_amount + ?
-               WHERE id = ? """,(amount,goal_id))
+               WHERE id = ? AND user_id = ? """,(amount,goal_id,current_user.id))
     db.commit()
     
     return redirect("/goal")
@@ -282,7 +289,9 @@ def contribution(goal_id):
 @login_required
 def contribution_detail(goal_id):
     db = get_db()
-    target = db.execute("SELECT * FROM targets WHERE id = ? ",(goal_id,)).fetchone()
+    target = db.execute("SELECT * FROM targets WHERE id = ? AND user_id = ?",(goal_id,current_user.id)).fetchone()
+    if not target:
+        abort(404)
     contribution = db.execute("SELECT * FROM contribution WHERE goal_id = ? ORDER BY time_created DESC",(goal_id,)).fetchall()
     
     return render_template("contribution_detail.html",target = target, contribution=contribution )
@@ -293,7 +302,8 @@ def contribution_detail(goal_id):
 @login_required
 def delete_entry(entry_id):
     db = get_db()
-    db.execute("DELETE FROM entries WHERE id=?", (entry_id,))
+    
+    db.execute("DELETE FROM entries WHERE id=? AND user_id=?", (entry_id, current_user.id))
     db.commit()
     return redirect("/spending")
 
