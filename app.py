@@ -9,7 +9,12 @@ import pandas as pd
 import plotly
 import plotly.graph_objects as go
 
- 
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
 app = Flask('__name__')
 DB_PATH = 'expenses.db'
 
@@ -36,7 +41,9 @@ def style_chart(fig, height=320):
     fig.update_yaxes(gridcolor=LINE_GREEN, zeroline=False, tickprefix="$")
     return plotly.io.to_html(fig, full_html=False, config={"displayModeBar": False, "responsive": True})
 
-app.secret_key = "d61fe446d8a185584b5b68723124adc2"
+app.secret_key = os.environ.get("SECRET_KEY")
+if not app.secret_key:
+    raise RuntimeError("SECRET_KEY is missing. Add it to your .env file.")
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
