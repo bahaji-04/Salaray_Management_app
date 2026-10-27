@@ -350,6 +350,8 @@ def change_password():
 def delete_account():
     db = get_db()
     db.execute("DELETE FROM entries WHERE user_id = ?",(current_user.id,))
+    db.execute(""" DELETE FROM contribution WHERE goal_id IN 
+               (SELECT id FROM targets WHERE user_id = ? )""",(current_user.id,))
     db.execute("DELETE FROM targets WHERE user_id = ? ",(current_user.id,))
     db.execute("DELETE FROM user WHERE id = ? ",(current_user.id,))
     
