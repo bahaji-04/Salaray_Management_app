@@ -15,8 +15,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-app = Flask('__name__')
-DB_PATH = 'expenses.db'
+app = Flask(__name__)
+
+DB_PATH = os.path.join(app.root_path, "expenses.db")
 
 # Forest design colors (same as static/style.css)
 DARK_GREEN = "#0b4a37"
