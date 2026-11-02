@@ -5,6 +5,7 @@
 {% block content %}
 <div class="auth">
     <form class="box" action="/signup" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div>
             <h1>Create your account</h1>
             <p class="muted">Start tracking your salary and spending.</p>
@@ -16,7 +17,7 @@
 
         <div class="field">
             <label for="username">Username</label>
-            <input id="username" type="text" name="username" required>
+            <input id="username" type="text" name="username" maxlength="50" value="{{ request.form.get('username', '') }}" required>
         </div>
         <div class="field">
             <label for="password">Password</label>

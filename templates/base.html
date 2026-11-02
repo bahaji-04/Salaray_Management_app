@@ -26,7 +26,10 @@
             <div class="who">
                 <span class="avatar">{{ current_user.username[0]|upper }}</span>
                 <span class="name">{{ current_user.username }}</span>
-                <a href="/logout">Logout</a>
+                <form action="/logout" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit">Logout</button>
+                </form>
             </div>
         </aside>
 

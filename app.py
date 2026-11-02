@@ -1,8 +1,13 @@
 from flask import Flask, g, request, render_template, redirect, abort
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
+import math
+from datetime import datetime
 
 from flask_login import LoginManager, UserMixin, login_user, logout_user,login_required,current_user
+from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from collections import OrderedDict
  
 import pandas as pd
@@ -45,6 +50,14 @@ def style_chart(fig, height=320):
 app.secret_key = os.environ.get("SECRET_KEY")
 if not app.secret_key:
     raise RuntimeError("SECRET_KEY is missing. Add it to your .env file.")
+
+# don't send the login cookie when another website posts a form to this app
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+# every POST form must send the hidden csrf_token field
+csrf = CSRFProtect(app)
+# counts login attempts per IP address (kept in memory, so it resets when the app restarts)
+limiter = Limiter(get_remote_address, app=app, storage_uri="memory://")
+
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
@@ -75,6 +88,45 @@ def db_close(e=None):
     db = g.pop('db', None)
     if db is not None:
         db.close()
+
+def parse_amount(text):
+    # a money amount bigger than 0 like "12.50", or None if the text isn't one
+    try:
+        amount = round(float(text), 2)
+    except ValueError:
+        return None
+    if not math.isfinite(amount) or amount <= 0:
+        return None
+    return amount
+
+def parse_date(text):
+    # a date written as YYYY-MM-DD, or None if the text isn't one
+    try:
+        return datetime.strptime(text, "%Y-%m-%d").date().isoformat()
+    except ValueError:
+        return None
+
+def read_entry_form(categories):
+
+    entry_type = request.form.get("type", "")
+    amount = parse_amount(request.form.get("amount", ""))
+    category_id = request.form.get("category_id", "")
+    entry_date = parse_date(request.form.get("entry_date", ""))
+    note = request.form.get("note", "").strip()
+
+    if entry_type not in ("income", "expense"):
+        return None, "Choose income or expense."
+    if amount is None:
+        return None, "Amount must be a number bigger than 0, like 12.50."
+    if category_id not in [str(category["id"]) for category in categories]:
+        return None, "Choose a category from the list."
+    if entry_date is None:
+        return None, "Enter a valid date."
+    return (int(category_id), amount, entry_type, entry_date, note), None
+
+@app.errorhandler(429)
+def too_many_attempts(e):
+    return render_template("login.html", error="Too many login attempts. Wait a minute and try again."), 429
         
 @app.route('/')
 def index():
@@ -88,8 +140,12 @@ def signup():
     if current_user.is_authenticated:
         return redirect("/spending")
     if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        if not username or not password.strip():
+            return render_template("signup.html", error = "Please enter a username and a password.")
+        if len(username) > 50:
+            return render_template("signup.html", error = "Username must be 50 characters or less.")
         check_username = db.execute("SELECT username FROM user WHERE username = ?",(username,)).fetchone()
         if check_username : 
             return render_template("signup.html",error = "this username already exits, please choose another one.")
@@ -102,13 +158,16 @@ def signup():
     return render_template("signup.html")
 
 @app.route("/login",methods=["GET","POST"])
+@limiter.limit("5 per minute", methods=["POST"])
 def login():
     db = get_db()
     if current_user.is_authenticated:
         return redirect("/spending")
     if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        if not username or not password:
+            return render_template("login.html",error="Please enter your username and password.")
         
         user = db.execute("""SELECT * FROM user
                    WHERE username = ? """,(username,)).fetchone()
@@ -218,71 +277,79 @@ def month_detail(month):
 @login_required
 def add_entry():
     db = get_db()
+    categories = db.execute("SELECT * FROM categories").fetchall()
     if request.method == "POST":
-        amount = request.form["amount"]
-        category_id = request.form["category_id"]
-        entry_type = request.form["type"]
-        entry_date = request.form["entry_date"]
-        note = request.form.get("note", "")
+        values, error = read_entry_form(categories)
+        if error:
+            return render_template("add_entry.html", categories=categories, error=error)
+        
+        category_id, amount, entry_type, entry_date, note = values
         db.execute("INSERT INTO entries (user_id, categories_id, amount, type, entry_date, note) VALUES (?, ?, ?, ?, ?, ?)",
-            (current_user.id , category_id, amount, entry_type, entry_date, note)
-        )
+            (current_user.id , category_id, amount, entry_type, entry_date, note))
         db.commit()
         return redirect("/spending")
  
-    categories = db.execute("SELECT * FROM categories").fetchall()
     return render_template("add_entry.html", categories=categories)
  
 @app.route("/edit-entry/<int:entry_id>", methods=["GET", "POST"])
 @login_required
 def edit_entry(entry_id):
     db = get_db()
+    entry = db.execute("SELECT * FROM entries WHERE user_id = ? and id = ?", (current_user.id, entry_id)).fetchone()
+    if not entry:
+        abort(404)
+    categories = db.execute("SELECT * FROM categories").fetchall()
     if request.method == "POST":
-        amount = request.form["amount"]
-        category_id = request.form["category_id"]
-        entry_type = request.form["type"]
-        entry_date = request.form["entry_date"]
-        note = request.form.get("note", "")
+        values, error = read_entry_form(categories)
+        if error:
+            return render_template("edit_entry.html", entry=entry, categories=categories, error=error)
+        category_id, amount, entry_type, entry_date, note = values
         db.execute(
             "UPDATE entries SET amount=?, categories_id=?, type=?, entry_date=?, note=? WHERE id=? and user_id=?",
             (amount, category_id, entry_type, entry_date, note, entry_id, current_user.id)
         )
         db.commit()
         return redirect("/spending")
- 
-    entry = db.execute("SELECT * FROM entries WHERE user_id = ? and id = ?", (current_user.id, entry_id)).fetchone()
-    if not entry:
-        abort(404)
-    categories = db.execute("SELECT * FROM categories").fetchall()
     
     return render_template("edit_entry.html", entry=entry, categories=categories)
+
+def render_goals(error=None):
+    goals = get_db().execute(""" SELECT * FROM targets 
+                       WHERE user_id = ? """,(current_user.id,)).fetchall()
+    return render_template("goal.html", goals = goals, error = error)
 
 @app.route("/goal",methods=["GET","POST"])
 @login_required
 def goal():
     db = get_db()
     if request.method == "POST":
-        name = request.form["name"]
-        target_amount = request.form["target_amount"]
+        name = request.form.get("name", "").strip()
+        target_amount = parse_amount(request.form.get("target_amount", ""))
+        if not name or len(name) > 100:
+            return render_goals("Goal name must be between 1 and 100 characters.")
+        if target_amount is None:
+            return render_goals("Target amount must be a number bigger than 0, like 2000.")
         db.execute("""INSERT INTO targets (user_id, name, target_amount)
                    VALUES (?,?,?)""",(current_user.id,name,target_amount))
         
         db.commit()
         return redirect("/goal")
 
-    goals = db.execute(""" SELECT * FROM targets 
-                       WHERE user_id = ? """,(current_user.id,)).fetchall()
-    return render_template("goal.html", goals = goals)
+    return render_goals()
 
 @app.route("/goal/<int:goal_id>/contribution", methods=["POST"])
 @login_required
 def contribution(goal_id):
     db = get_db()
-    amount = request.form["amount"]
-    contribution_date = request.form["contribution_date"]
     target = db.execute("SELECT * FROM targets WHERE id = ? AND user_id = ?",(goal_id,current_user.id)).fetchone()
     if not target:
         abort(404)
+    amount = parse_amount(request.form.get("amount", ""))
+    contribution_date = parse_date(request.form.get("contribution_date", ""))
+    if amount is None:
+        return render_goals("Amount saved must be a number bigger than 0, like 50.")
+    if contribution_date is None:
+        return render_goals("Enter a valid date for the contribution.")
         
     db.execute(""" INSERT INTO contribution (goal_id,amount,contribution_date) 
                VALUES (?,?,?) """,(goal_id,amount,contribution_date))
@@ -330,8 +397,10 @@ def account():
 def change_password():
     db = get_db()
     if request.method == "POST":
-        old_password = request.form["old_password"]
-        new_password = request.form["new_password"]
+        old_password = request.form.get("old_password", "")
+        new_password = request.form.get("new_password", "")
+        if not new_password.strip():
+            return render_template("change_password.html", error="New password can't be empty.")
         
         user = db.execute("SELECT * FROM user WHERE id = ?",(current_user.id,)).fetchone()
         
@@ -361,11 +430,12 @@ def delete_account():
     
     return redirect("/")
 
-@app.route("/logout")
+@app.route("/logout", methods=["POST"])
 @login_required
 def logout():
     logout_user()
     return redirect("/")
  
 if __name__ == "__main__":
-    app.run(debug=True)
+    # FLASK_DEBUG=1 in .env turns on the debugger; keep it off anywhere other people can reach the app
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "1", port=5001)

@@ -76,6 +76,7 @@
                         <div class="actions">
                             <a class="btn ghost sm" href="/edit-entry/{{ entry.id }}">Edit</a>
                             <form action="/delete-entry/{{ entry.id }}" method="post">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button class="btn ghost danger sm" type="submit">Delete</button>
                             </form>
                         </div>

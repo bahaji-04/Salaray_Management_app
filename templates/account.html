@@ -23,6 +23,7 @@
     <h2>Delete account</h2>
     <p class="muted" style="margin-bottom: 14px;">This removes your entries, goals and login for good. It can't be undone.</p>
     <form action="/account/delete" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="btn danger" type="submit" onclick="return confirm('Are you sure? This cannot be undone.')">Delete account</button>
     </form>
 </div>

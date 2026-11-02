@@ -11,35 +11,42 @@
 </div>
 
 <form class="panel form" action="/add-entry" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if error %}
+        <div class="err">{{ error }}</div>
+    {% endif %}
+
+    {# after a failed save, keep what the user typed #}
+    {% set form = request.form %}
     <div class="seg">
-        <input class="inc" type="radio" name="type" id="type-income" value="income" required>
+        <input class="inc" type="radio" name="type" id="type-income" value="income" {% if form.get('type') == 'income' %}checked{% endif %} required>
         <label for="type-income">Income</label>
-        <input class="exp" type="radio" name="type" id="type-expense" value="expense" checked>
+        <input class="exp" type="radio" name="type" id="type-expense" value="expense" {% if form.get('type') != 'income' %}checked{% endif %}>
         <label for="type-expense">Expense</label>
     </div>
 
     <div class="field">
         <label for="amount">Amount</label>
-        <input id="amount" class="amount-in" type="text" inputmode="decimal" name="amount" placeholder="0.00" required>
+        <input id="amount" class="amount-in" type="text" inputmode="decimal" name="amount" placeholder="0.00" value="{{ form.get('amount', '') }}" required>
     </div>
 
     <div class="field">
         <label for="category">Category</label>
         <select id="category" name="category_id" required>
             {% for category in categories %}
-                <option value="{{ category.id }}">{{ category.name }}</option>
+                <option value="{{ category.id }}" {% if form.get('category_id') == category.id|string %}selected{% endif %}>{{ category.name }}</option>
             {% endfor %}
         </select>
     </div>
 
     <div class="field">
         <label for="entry_date">Date</label>
-        <input id="entry_date" type="date" name="entry_date" required>
+        <input id="entry_date" type="date" name="entry_date" value="{{ form.get('entry_date', '') }}" required>
     </div>
 
     <div class="field">
         <label for="note">Note</label>
-        <input id="note" type="text" name="note" placeholder="Grocery store">
+        <input id="note" type="text" name="note" placeholder="Grocery store" value="{{ form.get('note', '') }}">
     </div>
 
     <div class="form-actions">

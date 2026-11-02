@@ -10,6 +10,10 @@
     </div>
 </div>
 
+{% if error %}
+    <div class="err" style="margin-bottom: 16px;">{{ error }}</div>
+{% endif %}
+
 <div class="grid2">
     {% for goal in goals %}
     {% set pct = goal.current_amount / goal.target_amount * 100 if goal.target_amount else 0 %}
@@ -25,6 +29,7 @@
             <a href="/goal/{{ goal.id }}">Details →</a>
         </div>
         <form method="post" action="/goal/{{ goal.id }}/contribution">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="text" inputmode="decimal" name="amount" placeholder="Amount saved" aria-label="Amount saved" required>
             <input type="date" name="contribution_date" aria-label="Date" required>
             <button class="btn sm" type="submit">Add</button>
@@ -33,10 +38,11 @@
     {% endfor %}
 
     <form class="panel goal new" method="post" action="/goal">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <h3>New goal</h3>
         <div class="field">
             <label for="goal-name">What are you saving for?</label>
-            <input id="goal-name" type="text" name="name" placeholder="Holiday in Lisbon" required>
+            <input id="goal-name" type="text" name="name" placeholder="Holiday in Lisbon" maxlength="100" required>
         </div>
         <div class="field">
             <label for="goal-target">Target amount</label>

@@ -13,35 +13,43 @@
 </div>
 
 <form class="panel form" method="post" action="/edit-entry/{{ entry.id }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if error %}
+        <div class="err">{{ error }}</div>
+    {% endif %}
+
+    {# after a failed save, keep what the user typed instead of the saved values #}
+    {% set form = request.form %}
+    {% set entry_type = form.get('type', entry.type) %}
     <div class="seg">
-        <input class="inc" type="radio" name="type" id="type-income" value="income" {% if entry.type == 'income' %}checked{% endif %} required>
+        <input class="inc" type="radio" name="type" id="type-income" value="income" {% if entry_type == 'income' %}checked{% endif %} required>
         <label for="type-income">Income</label>
-        <input class="exp" type="radio" name="type" id="type-expense" value="expense" {% if entry.type == 'expense' %}checked{% endif %}>
+        <input class="exp" type="radio" name="type" id="type-expense" value="expense" {% if entry_type != 'income' %}checked{% endif %}>
         <label for="type-expense">Expense</label>
     </div>
 
     <div class="field">
         <label for="amount">Amount</label>
-        <input id="amount" class="amount-in" type="text" inputmode="decimal" name="amount" value="{{ entry.amount }}" required>
+        <input id="amount" class="amount-in" type="text" inputmode="decimal" name="amount" value="{{ form.get('amount', entry.amount) }}" required>
     </div>
 
     <div class="field">
         <label for="category">Category</label>
         <select id="category" name="category_id" required>
             {% for category in categories %}
-                <option value="{{ category.id }}" {% if category.id == entry.categories_id %}selected{% endif %}>{{ category.name }}</option>
+                <option value="{{ category.id }}" {% if category.id|string == form.get('category_id', entry.categories_id|string) %}selected{% endif %}>{{ category.name }}</option>
             {% endfor %}
         </select>
     </div>
 
     <div class="field">
         <label for="entry_date">Date</label>
-        <input id="entry_date" type="date" name="entry_date" value="{{ entry.entry_date }}" required>
+        <input id="entry_date" type="date" name="entry_date" value="{{ form.get('entry_date', entry.entry_date) }}" required>
     </div>
 
     <div class="field">
         <label for="note">Note</label>
-        <input id="note" type="text" name="note" value="{{ entry.note or '' }}">
+        <input id="note" type="text" name="note" value="{{ form.get('note', entry.note or '') }}">
     </div>
 
     <div class="form-actions">

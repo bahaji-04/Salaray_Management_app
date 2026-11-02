@@ -111,7 +111,9 @@ button, input, select { font: inherit; color: inherit; }
   font-size: 14px;
   color: var(--on-header-muted);
 }
-.who a { flex-basis: 100%; color: var(--on-header); }
+.who form { flex-basis: 100%; }
+/* logout is a POST form, so its button is styled to look like the old link */
+.who button { padding: 0; border: 0; background: none; color: var(--on-header); text-decoration: underline; cursor: pointer; }
 
 .avatar {
   width: 30px;
@@ -350,7 +352,7 @@ td form { display: inline; }
   .nav { flex-direction: row; order: 3; width: 100%; flex: none; }
   .nav a { flex: 1; text-align: center; padding: 8px 4px; font-size: 14px; }
   .who { margin-left: auto; padding-top: 0; border-top: 0; flex-wrap: nowrap; }
-  .who a { flex-basis: auto; }
+  .who form { flex-basis: auto; }
   .who .name { display: none; }
   .content { padding: 20px 16px 32px; }
   .page-head h1 { font-size: 25px; }
