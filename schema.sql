@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
  
 CREATE TABLE IF NOT EXISTS categories(
     id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
+    name TEXT UNIQUE NOT NULL,
     type TEXT NOT NULL CHECK(type IN ('income','expense'))
 );
  
@@ -52,4 +52,5 @@ INSERT INTO categories (name, type) VALUES
     ('Food', 'expense'),
     ('Utilities', 'expense'),
     ('Transport', 'expense'),
-    ('Other', 'expense');
+    ('Other', 'expense')
+ON CONFLICT DO NOTHING;
