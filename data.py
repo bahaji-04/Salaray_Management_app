@@ -1,7 +1,16 @@
-import sqlite3
+import psycopg
 import random
 
-conn = sqlite3.connect('expenses.db')
+import os 
+from dotenv import load_dotenv
+
+
+load_dotenv()
+DATABASE_URL = os.environ.get("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL is missing. Add it to your .env file.")
+
+conn = psycopg.connect(DATABASE_URL)
 
 user_id = 1  # bahaji
 
@@ -13,20 +22,20 @@ months = ['2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09']
 for month in months:
     # Monthly salary on the 1st
     conn.execute(
-        "INSERT INTO entries (user_id, categories_id, amount, type, entry_date, note) VALUES (?,?,?,?,?,?)",
+        "INSERT INTO entries (user_id, categories_id, amount, type, entry_date, note) VALUES (%s,%s,%s,%s,%s,%s)",
         (user_id, 1, 3500.00, 'income', f'{month}-01', 'Monthly salary')
     )
 
     # Freelance income (some months)
     if random.random() > 0.4:
         conn.execute(
-            "INSERT INTO entries (user_id, categories_id, amount, type, entry_date, note) VALUES (?,?,?,?,?,?)",
+            "INSERT INTO entries (user_id, categories_id, amount, type, entry_date, note) VALUES (%s,%s,%s,%s,%s,%s)",
             (user_id, 2, random.randint(200, 800), 'income', f'{month}-15', 'Freelance project')
         )
 
     # Rent on the 5th
     conn.execute(
-        "INSERT INTO entries (user_id, categories_id, amount, type, entry_date, note) VALUES (?,?,?,?,?,?)",
+        "INSERT INTO entries (user_id, categories_id, amount, type, entry_date, note) VALUES (%s,%s,%s,%s,%s,%s)",
         (user_id, 3, 1200.00, 'expense', f'{month}-05', 'Monthly rent')
     )
 
@@ -36,13 +45,13 @@ for month in months:
         amount = round(random.uniform(8, 45), 2)
         notes = random.choice(['Grocery store', 'Restaurant', 'Coffee shop', 'Takeout', 'Lunch'])
         conn.execute(
-            "INSERT INTO entries (user_id, categories_id, amount, type, entry_date, note) VALUES (?,?,?,?,?,?)",
+            "INSERT INTO entries (user_id, categories_id, amount, type, entry_date, note) VALUES (%s,%s,%s,%s,%s,%s)",
             (user_id, 4, amount, 'expense', f'{month}-{day}', notes)
         )
 
     # Utilities
     conn.execute(
-        "INSERT INTO entries (user_id, categories_id, amount, type, entry_date, note) VALUES (?,?,?,?,?,?)",
+        "INSERT INTO entries (user_id, categories_id, amount, type, entry_date, note) VALUES (%s,%s,%s,%s,%s,%s)",
         (user_id, 5, round(random.uniform(50, 120), 2), 'expense', f'{month}-10', 'Electric and water')
     )
 
@@ -52,7 +61,7 @@ for month in months:
         amount = round(random.uniform(5, 30), 2)
         notes = random.choice(['Bus', 'Taxi', 'Metro', 'Gas'])
         conn.execute(
-            "INSERT INTO entries (user_id, categories_id, amount, type, entry_date, note) VALUES (?,?,?,?,?,?)",
+            "INSERT INTO entries (user_id, categories_id, amount, type, entry_date, note) VALUES (%s,%s,%s,%s,%s,%s)",
             (user_id, 6, amount, 'expense', f'{month}-{day}', notes)
         )
 
@@ -62,7 +71,7 @@ for month in months:
         amount = round(random.uniform(10, 100), 2)
         notes = random.choice(['Clothes', 'Phone bill', 'Haircut', 'Gift', 'Books'])
         conn.execute(
-            "INSERT INTO entries (user_id, categories_id, amount, type, entry_date, note) VALUES (?,?,?,?,?,?)",
+            "INSERT INTO entries (user_id, categories_id, amount, type, entry_date, note) VALUES (%s,%s,%s,%s,%s,%s)",
             (user_id, 7, amount, 'expense', f'{month}-{day}', notes)
         )
 

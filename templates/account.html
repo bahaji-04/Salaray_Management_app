@@ -14,7 +14,7 @@
     <span class="avatar big">{{ user.username[0]|upper }}</span>
     <div class="grow">
         <div style="font-weight: 700;">{{ user.username }}</div>
-        <div class="muted" style="font-size: 14px;">Member since {{ user.time_created[:10] }}</div>
+        <div class="muted" style="font-size: 14px;">Member since {{ user.time_created.strftime('%Y-%m-%d') }}</div>
     </div>
     <a class="btn ghost" href="/account/user-password">Change password</a>
 </div>

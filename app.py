@@ -1,6 +1,7 @@
 from flask import Flask, g, request, render_template, redirect, abort
 from werkzeug.security import generate_password_hash, check_password_hash
-import sqlite3
+import psycopg
+from psycopg.rows import dict_row
 import math
 from datetime import datetime
 
@@ -22,7 +23,9 @@ load_dotenv()
 
 app = Flask(__name__)
 
-DB_PATH = os.path.join(app.root_path, "expenses.db")
+DATABASE_URL = os.environ.get("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL is missing. Add it to your .env file.")
 
 # Forest design colors (same as static/style.css)
 DARK_GREEN = "#0b4a37"
@@ -70,7 +73,7 @@ class User(UserMixin):
 @login_manager.user_loader
 def load_user(user_id):
     db = get_db()
-    user = db.execute("SELECT * FROM user WHERE id = ?",(user_id,)).fetchone()
+    user = db.execute("SELECT * FROM users WHERE id = %s",(user_id,)).fetchone()
     if user:
         return User(user["id"],user["username"])
     return None
@@ -78,9 +81,9 @@ def load_user(user_id):
 
 def get_db():
     if 'db' not in g:
-        g.db = sqlite3.connect(DB_PATH)
-        g.db.row_factory = sqlite3.Row
-        g.db.execute("PRAGMA foreign_keys = ON")
+        g.db = psycopg.connect(DATABASE_URL)
+        g.db.row_factory = dict_row
+        
     return g.db
  
 @app.teardown_appcontext
@@ -89,13 +92,16 @@ def db_close(e=None):
     if db is not None:
         db.close()
 
+# stops huge numbers like 1e39 from overflowing the database column
+MAX_AMOUNT = 1_000_000_000
+
 def parse_amount(text):
     # a money amount bigger than 0 like "12.50", or None if the text isn't one
     try:
         amount = round(float(text), 2)
     except ValueError:
         return None
-    if not math.isfinite(amount) or amount <= 0:
+    if not math.isfinite(amount) or amount <= 0 or amount > MAX_AMOUNT:
         return None
     return amount
 
@@ -124,6 +130,12 @@ def read_entry_form(categories):
         return None, "Enter a valid date."
     return (int(category_id), amount, entry_type, entry_date, note), None
 
+@app.before_request
+def reject_nul_characters():
+    # Postgres text can't hold a NUL character, so these requests could only crash
+    if "\x00" in request.path or any("\x00" in value for value in request.form.values()):
+        abort(400)
+
 @app.errorhandler(429)
 def too_many_attempts(e):
     return render_template("login.html", error="Too many login attempts. Wait a minute and try again."), 429
@@ -146,11 +158,11 @@ def signup():
             return render_template("signup.html", error = "Please enter a username and a password.")
         if len(username) > 50:
             return render_template("signup.html", error = "Username must be 50 characters or less.")
-        check_username = db.execute("SELECT username FROM user WHERE username = ?",(username,)).fetchone()
+        check_username = db.execute("SELECT username FROM users WHERE username = %s",(username,)).fetchone()
         if check_username : 
             return render_template("signup.html",error = "this username already exits, please choose another one.")
         hash_password = generate_password_hash(password)
-        db.execute("INSERT INTO user (username,user_password) VALUES (?,?)",(username,hash_password))
+        db.execute("INSERT INTO users (username,user_password) VALUES (%s,%s)",(username,hash_password))
         
         db.commit()
         return redirect("/login")
@@ -169,8 +181,8 @@ def login():
         if not username or not password:
             return render_template("login.html",error="Please enter your username and password.")
         
-        user = db.execute("""SELECT * FROM user
-                   WHERE username = ? """,(username,)).fetchone()
+        user = db.execute("""SELECT * FROM users
+                   WHERE username = %s """,(username,)).fetchone()
         
         if user and check_password_hash(user["user_password"],password):
             user_things = User(user["id"],user["username"])
@@ -187,21 +199,22 @@ def login():
 @login_required
 def spending():
     db = get_db()
-    months = db.execute(""" SELECT substr(entry_date,1,7) AS Month, 
-                        SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) AS Total_Income,
-                        SUM (CASE WHEN type = 'expense' THEN amount ELSE 0 END) AS Total_Expense
+    months = db.execute(""" SELECT substr(entry_date,1,7) AS month, 
+                        SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) AS total_income,
+                        SUM (CASE WHEN type = 'expense' THEN amount ELSE 0 END) AS total_expense
                         FROM entries 
-                        WHERE user_id = ?
-                        GROUP BY substr(entry_date,1,7) """,(current_user.id,)).fetchall()
+                        WHERE user_id = %s
+                        GROUP BY substr(entry_date,1,7)
+                        ORDER BY month """,(current_user.id,)).fetchall()
     
     if months:
         df = pd.DataFrame(months,columns=[key for key in months[0].keys()])
         
-        total_saving = df["Total_Income"] - df["Total_Expense"]
+        total_saving = df["total_income"] - df["total_expense"]
         
         saving_fig = go.Figure(data=[
-            go.Bar(name="Income", x=df["Month"].tolist(), y=df["Total_Income"].tolist(), marker_color=LIGHT_GREEN),
-            go.Bar(name="Saving", x=df["Month"].tolist(), y=total_saving.tolist(), marker_color=DARK_GREEN)
+            go.Bar(name="Income", x=df["month"].tolist(), y=df["total_income"].tolist(), marker_color=LIGHT_GREEN),
+            go.Bar(name="Saving", x=df["month"].tolist(), y=total_saving.tolist(), marker_color=DARK_GREEN)
         ])
         saving_chart = style_chart(saving_fig)
         
@@ -218,14 +231,13 @@ def month_detail(month):
     categories = db.execute("SELECT * FROM categories").fetchall()
     entries = db.execute("""SELECT entries.*, categories.name AS category_name 
                          FROM entries JOIN categories ON entries.categories_id = categories.id 
-                         WHERE user_id = ? AND substr(entry_date,1,7) = ?
-                         ORDER BY entry_date DESC """,(current_user.id, month )).fetchall()
+                         WHERE user_id = %s AND substr(entry_date,1,7) = %s
+                         ORDER BY entry_date DESC, entries.id DESC """,(current_user.id, month )).fetchall()
     
-    total = db.execute(""" SELECT SUM(CASE WHEN type = 'income' THEN amount else 0 END) AS Total_Income,
-                       SUM(CASE WHEN type = 'expense' THEN amount else 0 END ) AS Total_Expense
+    total = db.execute(""" SELECT SUM(CASE WHEN type = 'income' THEN amount else 0 END) AS total_income,
+                       SUM(CASE WHEN type = 'expense' THEN amount else 0 END ) AS total_expense
                        FROM entries
-                       WHERE substr(entry_date,1,7) = ? AND user_id = ? 
-                       ORDER BY entry_date ASC""",(month,current_user.id)).fetchone()
+                       WHERE substr(entry_date,1,7) = %s AND user_id = %s """,(month,current_user.id)).fetchone()
     
     # making the dataframe from the database 
     if entries:
@@ -284,7 +296,7 @@ def add_entry():
             return render_template("add_entry.html", categories=categories, error=error)
         
         category_id, amount, entry_type, entry_date, note = values
-        db.execute("INSERT INTO entries (user_id, categories_id, amount, type, entry_date, note) VALUES (?, ?, ?, ?, ?, ?)",
+        db.execute("INSERT INTO entries (user_id, categories_id, amount, type, entry_date, note) VALUES (%s, %s, %s, %s, %s, %s)",
             (current_user.id , category_id, amount, entry_type, entry_date, note))
         db.commit()
         return redirect("/spending")
@@ -295,7 +307,7 @@ def add_entry():
 @login_required
 def edit_entry(entry_id):
     db = get_db()
-    entry = db.execute("SELECT * FROM entries WHERE user_id = ? and id = ?", (current_user.id, entry_id)).fetchone()
+    entry = db.execute("SELECT * FROM entries WHERE user_id = %s and id = %s", (current_user.id, entry_id)).fetchone()
     if not entry:
         abort(404)
     categories = db.execute("SELECT * FROM categories").fetchall()
@@ -305,7 +317,7 @@ def edit_entry(entry_id):
             return render_template("edit_entry.html", entry=entry, categories=categories, error=error)
         category_id, amount, entry_type, entry_date, note = values
         db.execute(
-            "UPDATE entries SET amount=?, categories_id=?, type=?, entry_date=?, note=? WHERE id=? and user_id=?",
+            "UPDATE entries SET amount=%s, categories_id=%s, type=%s, entry_date=%s, note=%s WHERE id=%s and user_id=%s",
             (amount, category_id, entry_type, entry_date, note, entry_id, current_user.id)
         )
         db.commit()
@@ -315,7 +327,7 @@ def edit_entry(entry_id):
 
 def render_goals(error=None):
     goals = get_db().execute(""" SELECT * FROM targets 
-                       WHERE user_id = ? """,(current_user.id,)).fetchall()
+                       WHERE user_id = %s ORDER BY id """,(current_user.id,)).fetchall()
     return render_template("goal.html", goals = goals, error = error)
 
 @app.route("/goal",methods=["GET","POST"])
@@ -330,7 +342,7 @@ def goal():
         if target_amount is None:
             return render_goals("Target amount must be a number bigger than 0, like 2000.")
         db.execute("""INSERT INTO targets (user_id, name, target_amount)
-                   VALUES (?,?,?)""",(current_user.id,name,target_amount))
+                   VALUES (%s,%s,%s)""",(current_user.id,name,target_amount))
         
         db.commit()
         return redirect("/goal")
@@ -341,7 +353,7 @@ def goal():
 @login_required
 def contribution(goal_id):
     db = get_db()
-    target = db.execute("SELECT * FROM targets WHERE id = ? AND user_id = ?",(goal_id,current_user.id)).fetchone()
+    target = db.execute("SELECT * FROM targets WHERE id = %s AND user_id = %s",(goal_id,current_user.id)).fetchone()
     if not target:
         abort(404)
     amount = parse_amount(request.form.get("amount", ""))
@@ -352,10 +364,10 @@ def contribution(goal_id):
         return render_goals("Enter a valid date for the contribution.")
         
     db.execute(""" INSERT INTO contribution (goal_id,amount,contribution_date) 
-               VALUES (?,?,?) """,(goal_id,amount,contribution_date))
+               VALUES (%s,%s,%s) """,(goal_id,amount,contribution_date))
     db.execute(""" UPDATE targets SET 
-               current_amount = current_amount + ?
-               WHERE id = ? AND user_id = ? """,(amount,goal_id,current_user.id))
+               current_amount = current_amount + %s
+               WHERE id = %s AND user_id = %s """,(amount,goal_id,current_user.id))
     db.commit()
     
     return redirect("/goal")
@@ -364,10 +376,10 @@ def contribution(goal_id):
 @login_required
 def contribution_detail(goal_id):
     db = get_db()
-    target = db.execute("SELECT * FROM targets WHERE id = ? AND user_id = ?",(goal_id,current_user.id)).fetchone()
+    target = db.execute("SELECT * FROM targets WHERE id = %s AND user_id = %s",(goal_id,current_user.id)).fetchone()
     if not target:
         abort(404)
-    contribution = db.execute("SELECT * FROM contribution WHERE goal_id = ? ORDER BY time_created DESC",(goal_id,)).fetchall()
+    contribution = db.execute("SELECT * FROM contribution WHERE goal_id = %s ORDER BY time_created DESC",(goal_id,)).fetchall()
     
     return render_template("contribution_detail.html",target = target, contribution=contribution )
           
@@ -378,7 +390,7 @@ def contribution_detail(goal_id):
 def delete_entry(entry_id):
     db = get_db()
     
-    db.execute("DELETE FROM entries WHERE id=? AND user_id=?", (entry_id, current_user.id))
+    db.execute("DELETE FROM entries WHERE id=%s AND user_id=%s", (entry_id, current_user.id))
     db.commit()
     return redirect("/spending")
 
@@ -388,7 +400,7 @@ def delete_entry(entry_id):
 def account():
     db = get_db()
     
-    user = db.execute("SELECT * FROM user WHERE id = ?",(current_user.id,)).fetchone()
+    user = db.execute("SELECT * FROM users WHERE id = %s",(current_user.id,)).fetchone()
     
     return render_template("account.html",user = user)
 
@@ -402,11 +414,11 @@ def change_password():
         if not new_password.strip():
             return render_template("change_password.html", error="New password can't be empty.")
         
-        user = db.execute("SELECT * FROM user WHERE id = ?",(current_user.id,)).fetchone()
+        user = db.execute("SELECT * FROM users WHERE id = %s",(current_user.id,)).fetchone()
         
         if check_password_hash(user["user_password"],old_password):
             new = generate_password_hash(new_password)
-            db.execute("UPDATE user SET user_password=? WHERE id = ?",(new,current_user.id))
+            db.execute("UPDATE users SET user_password=%s WHERE id = %s",(new,current_user.id))
             db.commit()
             return redirect("/account")
         else:
@@ -419,11 +431,11 @@ def change_password():
 @login_required
 def delete_account():
     db = get_db()
-    db.execute("DELETE FROM entries WHERE user_id = ?",(current_user.id,))
+    db.execute("DELETE FROM entries WHERE user_id = %s",(current_user.id,))
     db.execute(""" DELETE FROM contribution WHERE goal_id IN 
-               (SELECT id FROM targets WHERE user_id = ? )""",(current_user.id,))
-    db.execute("DELETE FROM targets WHERE user_id = ? ",(current_user.id,))
-    db.execute("DELETE FROM user WHERE id = ? ",(current_user.id,))
+               (SELECT id FROM targets WHERE user_id = %s )""",(current_user.id,))
+    db.execute("DELETE FROM targets WHERE user_id = %s ",(current_user.id,))
+    db.execute("DELETE FROM users WHERE id = %s ",(current_user.id,))
     
     db.commit()
     logout_user()

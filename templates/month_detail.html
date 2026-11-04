@@ -3,8 +3,8 @@
 {% block title %}{{ month }} · Salary App{% endblock %}
 
 {% block content %}
-{% set income = total.Total_Income or 0 %}
-{% set expense = total.Total_Expense or 0 %}
+{% set income = total.total_income or 0 %}
+{% set expense = total.total_expense or 0 %}
 
 <a class="back" href="/spending">← Monthly summary</a>
 

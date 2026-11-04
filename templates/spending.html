@@ -5,15 +5,15 @@
 {% block content %}
 <div class="page-head">
     <div>
-        {% if months %}<div class="eyebrow">{{ months[0].Month }} – {{ months[-1].Month }}</div>{% endif %}
+        {% if months %}<div class="eyebrow">{{ months[0].month }} – {{ months[-1].month }}</div>{% endif %}
         <h1>Monthly summary</h1>
     </div>
     <a href="{{ url_for('add_entry') }}" class="btn">+ Add entry</a>
 </div>
 
 {% if months %}
-    {% set total_income = months|sum(attribute='Total_Income') %}
-    {% set total_expense = months|sum(attribute='Total_Expense') %}
+    {% set total_income = months|sum(attribute='total_income') %}
+    {% set total_expense = months|sum(attribute='total_expense') %}
     <div class="stats">
         <div class="stat"><div class="k">Total saved</div><div class="v">${{ "{:,.2f}".format(total_income - total_expense) }}</div></div>
         <div class="stat"><div class="k">Total income</div><div class="v pos">${{ "{:,.2f}".format(total_income) }}</div></div>
@@ -40,14 +40,14 @@
                 </thead>
                 <tbody>
                     {% for month in months|reverse %}
-                    {% set saved = month.Total_Income - month.Total_Expense %}
+                    {% set saved = month.total_income - month.total_expense %}
                     <tr>
-                        <td><a href="/spending/{{ month.Month }}">{{ month.Month }}</a></td>
-                        <td class="r">${{ "{:,.2f}".format(month.Total_Income) }}</td>
-                        <td class="r">${{ "{:,.2f}".format(month.Total_Expense) }}</td>
+                        <td><a href="/spending/{{ month.month }}">{{ month.month }}</a></td>
+                        <td class="r">${{ "{:,.2f}".format(month.total_income) }}</td>
+                        <td class="r">${{ "{:,.2f}".format(month.total_expense) }}</td>
                         <td class="r {{ 'pos' if saved >= 0 else 'neg' }}">
                             {{ '-' if saved < 0 }}${{ "{:,.2f}".format(saved|abs) }}
-                            {% if month.Total_Income %}<span class="rate">{{ "%.0f"|format(saved / month.Total_Income * 100) }}%</span>{% endif %}
+                            {% if month.total_income %}<span class="rate">{{ "%.0f"|format(saved / month.total_income * 100) }}%</span>{% endif %}
                         </td>
                     </tr>
                     {% endfor %}

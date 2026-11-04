@@ -1,11 +1,16 @@
-import sqlite3
+import psycopg
+import os
+from dotenv import load_dotenv
 
-DB_PATH = 'expenses.db'
+load_dotenv()
+DATABASE_URL = os.environ.get("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL is missing. Add it to your .env file.")
 
-connection = sqlite3.connect(DB_PATH)
+connection = psycopg.connect(DATABASE_URL)
 
 with open('schema.sql', 'r') as f:
-    connection.executescript(f.read())
+    connection.execute(f.read())
 
 connection.commit()
 connection.close()
