@@ -210,6 +210,9 @@ def spending():
     if months:
         df = pd.DataFrame(months,columns=[key for key in months[0].keys()])
         
+        df["total_income"] = df["total_income"].astype(float)
+        df["total_expense"] = df["total_expense"].astype(float)
+
         total_saving = df["total_income"] - df["total_expense"]
         
         saving_fig = go.Figure(data=[
@@ -242,6 +245,7 @@ def month_detail(month):
     # making the dataframe from the database 
     if entries:
         df = pd.DataFrame(entries,columns=[key for key in entries[0].keys()])
+        expenses_only = df["amount"] = df["amount"].astype(float)
         
         expenses_only = df[df["type"] == "expense"]
         # how much I spent in every category
