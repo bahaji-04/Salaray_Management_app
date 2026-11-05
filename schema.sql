@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS entries(
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
     categories_id INTEGER NOT NULL,
-    amount DOUBLE PRECISION NOT NULL,
+    amount NUMERIC(12,2) NOT NULL,
     type TEXT NOT NULL CHECK(type IN ('income','expense')),
     entry_date TEXT NOT NULL,
     note TEXT,
@@ -29,8 +29,8 @@ CREATE TABLE IF NOT EXISTS targets(
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
     name TEXT NOT NULL,
-    target_amount DOUBLE PRECISION NOT NULL,
-    current_amount DOUBLE PRECISION NOT NULL DEFAULT 0,
+    target_amount NUMERIC(12,2) NOT NULL,
+    current_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
     created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(user_id) REFERENCES users(id)
 );
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS targets(
 CREATE TABLE IF NOT EXISTS contribution(
     id SERIAL PRIMARY KEY,
     goal_id INTEGER NOT NULL,
-    amount DOUBLE PRECISION NOT NULL,
+    amount NUMERIC(12,2) NOT NULL,
     contribution_date TEXT NOT NULL,
     time_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(goal_id) REFERENCES targets(id)
