@@ -4,6 +4,8 @@ A personal salary and expense manager built with Flask and PostgreSQL. Log your 
 
 **Live app:** https://salaray-management-app.onrender.com
 
+![A tour of the app: the monthly summary, one month in detail, adding an entry, savings goals and the account page](docs/demo.gif)
+
 ## Features
 
 - **Monthly summary**: total income, total spent, total saved and savings rate across all months, with an income-vs-savings chart and a table of every month.
@@ -12,7 +14,7 @@ A personal salary and expense manager built with Flask and PostgreSQL. Log your 
 - **Savings goals**: set a target amount, add contributions as you save, and watch a progress bar fill. Each goal has a page listing its contributions.
 - **Accounts**: sign up, log in, change your password, or delete your account along with all of its data.
 
-Charts are drawn with Plotly and styled to match the app's green theme.
+Charts are drawn with Plotly and styled to match the app's black and green colors. On a phone the app is one column with a bottom tab bar; on a computer (900px and wider) it has a sidebar and wide, multi-column pages.
 
 ## Tech stack
 
@@ -190,3 +192,7 @@ Default categories: Salary and Freelance (income); Rent, Food, Utilities, Transp
 ## Changing the schema
 
 `schema.sql` uses `CREATE TABLE IF NOT EXISTS`, so running `init_db.py` again won't change tables that already exist. If you edit a column in `schema.sql`, apply the change to an existing database yourself with `ALTER TABLE`, or drop the database and run `init_db.py` again.
+
+## Coming next
+
+A bot that adds and edits your entries for you, so you don't have to enter them by hand.
