@@ -1,93 +1,86 @@
 {% extends "base.html" %}
 
-{% block title %}{{ month }} · Salary App{% endblock %}
+{% block title %}{{ month|month_label }} · Salary App{% endblock %}
+
+{% block back %}<a class="back" href="/spending">Home</a>{% endblock %}
 
 {% block content %}
 {% set income = total.total_income or 0 %}
 {% set expense = total.total_expense or 0 %}
+{% set saved = income - expense %}
 
-<a class="back" href="/spending">← Monthly summary</a>
+<h1 class="page-head">{{ month|month_label }}</h1>
 
-<div class="page-head">
-    <div>
-        <div class="eyebrow">Month detail</div>
-        <h1>{{ month }}</h1>
-    </div>
-    <a href="{{ url_for('add_entry') }}" class="btn ghost">+ Add entry</a>
-</div>
-
-<div class="stats">
-    <div class="stat"><div class="k">Saved</div><div class="v">${{ "{:,.2f}".format(income - expense) }}</div></div>
-    <div class="stat"><div class="k">Income</div><div class="v pos">${{ "{:,.2f}".format(income) }}</div></div>
-    <div class="stat"><div class="k">Expense</div><div class="v neg">${{ "{:,.2f}".format(expense) }}</div></div>
-    <div class="stat"><div class="k">Daily average</div><div class="v">${{ "{:,.2f}".format(daily_avg_expense) }}</div></div>
+<div class="cols">
+<section class="slip">
+    <p class="slip-k">Saved this month</p>
+    <p class="slip-v">{{ '-' if saved < 0 }}${{ "{:,.2f}".format(saved|abs) }}</p>
+    {% if saved < 0 %}
+        <p class="slip-s">You spent more than you earned.</p>
+    {% elif income %}
+        <p class="slip-s"><b>{{ "%.1f"|format(saved / income * 100) }}%</b> of your income kept</p>
+    {% endif %}
+    <div class="tear"></div>
+    <dl class="slip-cols">
+        <div><dt>Income</dt><dd>${{ "{:,.2f}".format(income) }}</dd></div>
+        <div><dt>Spent</dt><dd>${{ "{:,.2f}".format(expense) }}</dd></div>
+        <div><dt>Per day</dt><dd>${{ "{:,.2f}".format(daily_avg_expense) }}</dd></div>
+    </dl>
+</section>
+{% if entries and total_category|length %}
+<section class="section">
+    <h2>Spending by category</h2>
+    <div class="card pad-chart chart">{{ chart | safe }}</div>
+</section>
+{% endif %}
 </div>
 
 {% if entries %}
-<div class="grid2">
-    <div class="panel">
-        <h2>Spending by category</h2>
-        <div class="chart">{{ chart | safe }}</div>
-    </div>
 
-    <div class="panel">
-        <h2>Top 3 expenses</h2>
-        <div class="chart">{{ chart2 | safe }}</div>
-        <div class="top3">
-            {% for _, row in top_3.iterrows() %}
-            <div class="row">
-                <span class="rank">{{ loop.index }}</span>
-                <div class="grow">
-                    <div>{{ row.note or row.category_name }}</div>
-                    <div class="meta">{{ row.category_name }} · {{ row.entry_date }}</div>
-                </div>
-                <span class="num neg">${{ "{:,.2f}".format(row.amount) }}</span>
+{% if top_3|length %}
+<section class="section">
+    <h2>Biggest expenses</h2>
+    <div class="cols even">
+    <div class="card pad-chart chart">{{ chart2 | safe }}</div>
+    <div class="list">
+        {% for _, row in top_3.iterrows() %}
+        <div class="row">
+            <span class="badge">{{ loop.index }}</span>
+            <div class="grow">
+                <div class="t">{{ row.note or row.category_name }}</div>
+                <div class="m">{{ row.category_name }}, {{ row.entry_date|day_label }}</div>
             </div>
-            {% endfor %}
+            <span class="amt neg">${{ "{:,.2f}".format(row.amount) }}</span>
         </div>
+        {% endfor %}
     </div>
-</div>
+    </div>
+</section>
 {% endif %}
 
-<div class="panel">
-    <h2>Entries <span class="muted">{{ entries|length }}</span></h2>
-    {% if entries %}
-    <div class="tablewrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Category</th>
-                    <th>Note</th>
-                    <th class="r">Amount</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for entry in entries %}
-                <tr>
-                    <td class="num">{{ entry.entry_date }}</td>
-                    <td><span class="chip {{ 'inc' if entry.type == 'income' }}">{{ entry.category_name }}</span></td>
-                    <td class="wrap">{{ entry.note or "" }}</td>
-                    <td class="r {{ 'pos' if entry.type == 'income' else 'neg' }}">
-                        {{ '+' if entry.type == 'income' else '−' }}${{ "{:,.2f}".format(entry.amount) }}
-                    </td>
-                    <td>
-                        <div class="actions">
-                            <a class="btn ghost sm" href="/edit-entry/{{ entry.id }}">Edit</a>
-                            <form action="/delete-entry/{{ entry.id }}" method="post">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button class="btn ghost danger sm" type="submit">Delete</button>
-                            </form>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<section class="section">
+    <h2>Entries <span class="count">{{ entries|length }}</span></h2>
+    <p class="muted small" style="padding: 0 4px;">Tap an entry to edit or delete it.</p>
+    {% for day, day_entries in entries|groupby('entry_date')|reverse %}
+    <div class="day">{{ day|day_label }}</div>
+    <div class="list">
+        {% for entry in day_entries %}
+        <a class="row link" href="/edit-entry/{{ entry.id }}">
+            <span class="badge {{ 'inc' if entry.type == 'income' }}" aria-hidden="true">{{ entry.category_name[0]|upper }}</span>
+            <div class="grow">
+                <div class="t">{{ entry.note or entry.category_name }}</div>
+                <div class="m">{{ entry.category_name }}</div>
+            </div>
+            <span class="amt {{ 'pos' if entry.type == 'income' else 'neg' }}">{{ '+' if entry.type == 'income' else '−' }}${{ "{:,.2f}".format(entry.amount) }}</span>
+        </a>
+        {% endfor %}
     </div>
-    {% else %}
-        <p class="muted">No entries this month.</p>
-    {% endif %}
+    {% endfor %}
+</section>
+{% else %}
+<div class="card empty">
+    <p>No entries in {{ month|month_label }}.</p>
+    <a href="{{ url_for('add_entry') }}" class="btn">Add an entry</a>
 </div>
+{% endif %}
 {% endblock %}

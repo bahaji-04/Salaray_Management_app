@@ -1,16 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}Add Entry · Salary App{% endblock %}
+{% block title %}Add entry · Salary App{% endblock %}
 
 {% block content %}
-<div class="page-head">
-    <div>
-        <div class="eyebrow">New entry</div>
-        <h1>Add income or expense</h1>
-    </div>
-</div>
+<h1 class="page-head">Add an entry</h1>
 
-<form class="panel form" action="/add-entry" method="post">
+<form class="card form" action="/add-entry" method="post">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% if error %}
         <div class="err">{{ error }}</div>
@@ -27,7 +22,10 @@
 
     <div class="field">
         <label for="amount">Amount</label>
-        <input id="amount" class="amount-in" type="text" inputmode="decimal" name="amount" placeholder="0.00" value="{{ form.get('amount', '') }}" required>
+        <div class="amount-box">
+            <span aria-hidden="true">$</span>
+            <input id="amount" type="text" inputmode="decimal" name="amount" placeholder="0.00" value="{{ form.get('amount', '') }}" autocomplete="off" required>
+        </div>
     </div>
 
     <div class="field">
@@ -50,8 +48,8 @@
     </div>
 
     <div class="form-actions">
-        <button class="btn" type="submit">Save entry</button>
-        <a class="btn ghost" href="/spending">Cancel</a>
+        <button class="btn block" type="submit">Save entry</button>
+        <a class="btn ghost block" href="/spending">Cancel</a>
     </div>
 </form>
 {% endblock %}

@@ -4,32 +4,32 @@
 
 {% block content %}
 <div class="auth">
-    <form class="box" action="/login" method="post">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div>
-            <h1>Log in</h1>
-            <p class="muted">Welcome back. Your months are waiting.</p>
-        </div>
+    <div class="page-head">
+        <h1>Log in</h1>
+        <p class="muted">Welcome back. Your months are waiting.</p>
+    </div>
 
+    <form class="card form" action="/login" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         {% if error %}
             <div class="err">{{ error }}</div>
         {% endif %}
 
         <div class="field">
             <label for="username">Username</label>
-            <input id="username" type="text" name="username" required>
+            <input id="username" type="text" name="username" autocomplete="username" autocapitalize="none" required>
         </div>
         <div class="field">
             <label for="password">Password</label>
-            <input id="password" type="password" name="password" required>
+            <input id="password" type="password" name="password" autocomplete="current-password" required>
         </div>
         <label class="check">
             <input type="checkbox" onclick="var pw = document.getElementById('password'); pw.type = pw.type === 'password' ? 'text' : 'password';">
             Show password
         </label>
 
-        <button class="btn" type="submit">Log in</button>
-        <p class="muted">No account yet? <a href="/signup">Sign up</a></p>
+        <button class="btn block" type="submit">Log in</button>
     </form>
+    <p class="links">No account yet? <a href="/signup">Sign up</a></p>
 </div>
 {% endblock %}

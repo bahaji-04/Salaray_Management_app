@@ -1,63 +1,62 @@
 {% extends "base.html" %}
 
-{% block title %}Monthly Summary · Salary App{% endblock %}
+{% block title %}Home · Salary App{% endblock %}
 
 {% block content %}
-<div class="page-head">
-    <div>
-        {% if months %}<div class="eyebrow">{{ months[0].month }} – {{ months[-1].month }}</div>{% endif %}
-        <h1>Monthly summary</h1>
-    </div>
-    <a href="{{ url_for('add_entry') }}" class="btn">+ Add entry</a>
-</div>
-
 {% if months %}
     {% set total_income = months|sum(attribute='total_income') %}
     {% set total_expense = months|sum(attribute='total_expense') %}
-    <div class="stats">
-        <div class="stat"><div class="k">Total saved</div><div class="v">${{ "{:,.2f}".format(total_income - total_expense) }}</div></div>
-        <div class="stat"><div class="k">Total income</div><div class="v pos">${{ "{:,.2f}".format(total_income) }}</div></div>
-        <div class="stat"><div class="k">Total spent</div><div class="v neg">${{ "{:,.2f}".format(total_expense) }}</div></div>
-        <div class="stat"><div class="k">Savings rate</div><div class="v">{{ "%.1f"|format((total_income - total_expense) / total_income * 100 if total_income else 0) }}%</div></div>
-    </div>
+    {% set total_saved = total_income - total_expense %}
+    <h1 class="page-head">Your money</h1>
 
-    <div class="panel">
+    <div class="cols">
+    <section class="slip">
+        <p class="slip-k">
+            {% if months|length == 1 %}Saved in {{ months[0].month|month_label }}
+            {% else %}Saved from {{ months[0].month|month_label('short') }} to {{ months[-1].month|month_label('short') }}{% endif %}
+        </p>
+        <p class="slip-v">{{ '-' if total_saved < 0 }}${{ "{:,.2f}".format(total_saved|abs) }}</p>
+        {% if total_saved < 0 %}
+            <p class="slip-s">You spent more than you earned.</p>
+        {% elif total_income %}
+            <p class="slip-s"><b>{{ "%.1f"|format(total_saved / total_income * 100) }}%</b> of your income kept</p>
+        {% endif %}
+        <div class="tear"></div>
+        <dl class="slip-cols">
+            <div><dt>Income</dt><dd>${{ "{:,.2f}".format(total_income) }}</dd></div>
+            <div><dt>Spent</dt><dd>${{ "{:,.2f}".format(total_expense) }}</dd></div>
+        </dl>
+    </section>
+
+    <section class="section">
         <h2>Income and savings</h2>
-        <div class="chart">{{ saving_chart | safe }}</div>
+        <div class="card pad-chart chart">{{ saving_chart | safe }}</div>
+    </section>
     </div>
 
-    <div class="panel">
+    <section class="section">
         <h2>Months</h2>
-        <div class="tablewrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Month</th>
-                        <th class="r">Income</th>
-                        <th class="r">Expense</th>
-                        <th class="r">Savings</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for month in months|reverse %}
-                    {% set saved = month.total_income - month.total_expense %}
-                    <tr>
-                        <td><a href="/spending/{{ month.month }}">{{ month.month }}</a></td>
-                        <td class="r">${{ "{:,.2f}".format(month.total_income) }}</td>
-                        <td class="r">${{ "{:,.2f}".format(month.total_expense) }}</td>
-                        <td class="r {{ 'pos' if saved >= 0 else 'neg' }}">
-                            {{ '-' if saved < 0 }}${{ "{:,.2f}".format(saved|abs) }}
-                            {% if month.total_income %}<span class="rate">{{ "%.0f"|format(saved / month.total_income * 100) }}%</span>{% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="list">
+            {% for month in months|reverse %}
+            {% set saved = month.total_income - month.total_expense %}
+            <a class="row link" href="/spending/{{ month.month }}">
+                <div class="grow">
+                    <div class="t">{{ month.month|month_label }}</div>
+                    <div class="m num">${{ "{:,.2f}".format(month.total_expense) }} spent</div>
+                </div>
+                <div class="amt {{ 'pos' if saved >= 0 else 'neg' }}">
+                    {{ '+' if saved >= 0 else '−' }}${{ "{:,.2f}".format(saved|abs) }}
+                    {% if month.total_income %}<div class="m">{{ "%.0f"|format(saved / month.total_income * 100) }}% saved</div>{% endif %}
+                </div>
+            </a>
+            {% endfor %}
         </div>
-    </div>
+    </section>
 {% else %}
-    <div class="panel">
-        <p>No entries yet. <a href="{{ url_for('add_entry') }}">Add your first entry</a>.</p>
+    <h1 class="page-head">Your money</h1>
+    <div class="card empty">
+        <p>Nothing logged yet. Add your salary or an expense and your first month shows up here.</p>
+        <a href="{{ url_for('add_entry') }}" class="btn">Add your first entry</a>
     </div>
 {% endif %}
 {% endblock %}

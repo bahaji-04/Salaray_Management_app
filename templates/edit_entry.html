@@ -1,18 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}Edit Entry · Salary App{% endblock %}
+{% block title %}Edit entry · Salary App{% endblock %}
+
+{% block back %}<a class="back" href="/spending/{{ entry.entry_date[:7] }}">{{ entry.entry_date[:7]|month_label }}</a>{% endblock %}
 
 {% block content %}
-<a class="back" href="/spending/{{ entry.entry_date[:7] }}">← Back to {{ entry.entry_date[:7] }}</a>
+<h1 class="page-head">Edit entry</h1>
 
-<div class="page-head">
-    <div>
-        <div class="eyebrow">Edit entry</div>
-        <h1>Modify your entry</h1>
-    </div>
-</div>
-
-<form class="panel form" method="post" action="/edit-entry/{{ entry.id }}">
+<form class="card form" method="post" action="/edit-entry/{{ entry.id }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% if error %}
         <div class="err">{{ error }}</div>
@@ -30,7 +25,10 @@
 
     <div class="field">
         <label for="amount">Amount</label>
-        <input id="amount" class="amount-in" type="text" inputmode="decimal" name="amount" value="{{ form.get('amount', entry.amount) }}" required>
+        <div class="amount-box">
+            <span aria-hidden="true">$</span>
+            <input id="amount" type="text" inputmode="decimal" name="amount" value="{{ form.get('amount', entry.amount) }}" autocomplete="off" required>
+        </div>
     </div>
 
     <div class="field">
@@ -53,8 +51,13 @@
     </div>
 
     <div class="form-actions">
-        <button class="btn" type="submit">Save changes</button>
-        <a class="btn ghost" href="/spending/{{ entry.entry_date[:7] }}">Cancel</a>
+        <button class="btn block" type="submit">Save changes</button>
+        <a class="btn ghost block" href="/spending/{{ entry.entry_date[:7] }}">Cancel</a>
     </div>
+</form>
+
+<form action="/delete-entry/{{ entry.id }}" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn ghost danger block" type="submit" onclick="return confirm('Delete this entry? This cannot be undone.')">Delete entry</button>
 </form>
 {% endblock %}

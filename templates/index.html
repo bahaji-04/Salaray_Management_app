@@ -3,13 +3,26 @@
 {% block title %}Welcome · Salary App{% endblock %}
 
 {% block content %}
+<div class="landing">
 <section class="hero">
-    <div class="eyebrow">Personal salary &amp; expense manager</div>
     <h1>See where every payslip goes.</h1>
     <p>Log income and expenses, review each month by category, and put savings toward goals you set.</p>
     <div class="ctas">
-        <a class="btn" href="/signup">Create an account</a>
-        <a class="btn ghost" href="/login">Log in</a>
+        <a class="btn block" href="/signup">Create an account</a>
+        <a class="btn ghost block" href="/login">Log in</a>
     </div>
 </section>
+
+{# a made-up month, shown only as a picture of what the app's summary looks like #}
+<div class="slip sample" aria-hidden="true">
+    <p class="slip-k">An example month</p>
+    <p class="slip-v">$1,284.50</p>
+    <p class="slip-s"><b>32.9%</b> of income kept</p>
+    <div class="tear"></div>
+    <dl class="slip-cols">
+        <div><dt>Income</dt><dd>$3,900.00</dd></div>
+        <div><dt>Spent</dt><dd>$2,615.50</dd></div>
+    </dl>
+</div>
+</div>
 {% endblock %}

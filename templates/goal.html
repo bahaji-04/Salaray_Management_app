@@ -3,52 +3,55 @@
 {% block title %}Goals · Salary App{% endblock %}
 
 {% block content %}
-<div class="page-head">
-    <div>
-        <div class="eyebrow">Savings</div>
-        <h1>Goals</h1>
-    </div>
-</div>
+<h1 class="page-head">Savings goals</h1>
 
 {% if error %}
-    <div class="err" style="margin-bottom: 16px;">{{ error }}</div>
+    <div class="err">{{ error }}</div>
 {% endif %}
 
-<div class="grid2">
-    {% for goal in goals %}
-    {% set pct = goal.current_amount / goal.target_amount * 100 if goal.target_amount else 0 %}
-    <div class="panel goal">
-        <div class="top">
-            <h3>{{ goal.name }}</h3>
-            <span class="muted num">{{ "%.1f"|format(pct) }}%</span>
-        </div>
-        <div class="progress"><b style="width: {{ [pct, 100]|min }}%"></b></div>
-        <div class="top">
-            <span><span class="num">${{ "{:,.2f}".format(goal.current_amount) }}</span>
-                <span class="muted">of ${{ "{:,.2f}".format(goal.target_amount) }}</span></span>
-            <a href="/goal/{{ goal.id }}">Details →</a>
-        </div>
+<div class="grid">
+{% for goal in goals %}
+{% set pct = goal.current_amount / goal.target_amount * 100 if goal.target_amount else 0 %}
+<article class="card goal">
+    <a class="goal-head" href="/goal/{{ goal.id }}">
+        <h2>{{ goal.name }}</h2>
+        <span class="muted num">{{ "%.0f"|format(pct) }}%</span>
+    </a>
+    <div class="progress"><b style="width: {{ [pct, 100]|min }}%"></b></div>
+    <p><span class="num" style="font-weight: 600;">${{ "{:,.2f}".format(goal.current_amount) }}</span>
+        <span class="muted">of ${{ "{:,.2f}".format(goal.target_amount) }}</span></p>
+    <details class="contrib">
+        <summary>Add savings</summary>
         <form method="post" action="/goal/{{ goal.id }}/contribution">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="text" inputmode="decimal" name="amount" placeholder="Amount saved" aria-label="Amount saved" required>
-            <input type="date" name="contribution_date" aria-label="Date" required>
-            <button class="btn sm" type="submit">Add</button>
+            <div class="field">
+                <label for="amount-{{ goal.id }}">Amount saved</label>
+                <input id="amount-{{ goal.id }}" type="text" inputmode="decimal" name="amount" placeholder="50" autocomplete="off" required>
+            </div>
+            <div class="field">
+                <label for="date-{{ goal.id }}">Date</label>
+                <input id="date-{{ goal.id }}" type="date" name="contribution_date" required>
+            </div>
+            <button class="btn sm" type="submit">Add to {{ goal.name }}</button>
         </form>
-    </div>
-    {% endfor %}
+    </details>
+</article>
+{% endfor %}
 
-    <form class="panel goal new" method="post" action="/goal">
+<section class="section">
+    <h2>New goal</h2>
+    <form class="card form" method="post" action="/goal">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <h3>New goal</h3>
         <div class="field">
             <label for="goal-name">What are you saving for?</label>
             <input id="goal-name" type="text" name="name" placeholder="Holiday in Lisbon" maxlength="100" required>
         </div>
         <div class="field">
             <label for="goal-target">Target amount</label>
-            <input id="goal-target" type="text" inputmode="decimal" name="target_amount" placeholder="2000" required>
+            <input id="goal-target" type="text" inputmode="decimal" name="target_amount" placeholder="2000" autocomplete="off" required>
         </div>
-        <button class="btn" type="submit">Create goal</button>
+        <button class="btn block" type="submit">Create goal</button>
     </form>
+</section>
 </div>
 {% endblock %}

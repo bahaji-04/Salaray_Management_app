@@ -27,28 +27,58 @@ DATABASE_URL = os.environ.get("DATABASE_URL")
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL is missing. Add it to your .env file.")
 
-# Forest design colors (same as static/style.css)
-DARK_GREEN = "#0b4a37"
-MID_GREEN = "#3e9c76"
-LIGHT_GREEN = "#a9d3bf"
-TEXT_GREEN = "#587066"
-LINE_GREEN = "#d7e4dd"
+# Payslip design colors (same as static/style.css)
+GREEN = "#2bd576"
+MID_GREEN = "#1f8f52"
+DIM_GREEN = "#14532d"
+CHART_TEXT = "#6fa888"
+CHART_LINE = "#143a24"
 
-def style_chart(fig, height=320):
-    # make plotly charts match the Forest design
+def style_chart(fig, height=260, horizontal=False):
+    # make plotly charts match the Payslip design and behave on a touch screen
     fig.update_layout(
         height=height,
-        margin=dict(l=10, r=10, t=10, b=10),
+        margin=dict(l=4, r=64 if horizontal else 4, t=4, b=4),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="Manrope, system-ui, sans-serif", color=TEXT_GREEN, size=13),
-        legend=dict(orientation="h", y=1.1, x=0),
+        font=dict(family="Figtree, system-ui, sans-serif", color=CHART_TEXT, size=13),
+        legend=dict(orientation="h", y=1.14, x=0),
         bargap=0.35,
+        # no drag-to-zoom, so a finger on the chart still scrolls the page
+        dragmode=False,
     )
-    # type="category" keeps "2026-10" as a label instead of turning it into a date like "00:00:00 Oct 1, 2026"
-    fig.update_xaxes(showgrid=False, linecolor=LINE_GREEN, type="category")
-    fig.update_yaxes(gridcolor=LINE_GREEN, zeroline=False, tickprefix="$")
-    return plotly.io.to_html(fig, full_html=False, config={"displayModeBar": False, "responsive": True})
+    if horizontal:
+        # bars run left to right with the amount printed at the end, so the money axis isn't needed
+        fig.update_xaxes(visible=False, fixedrange=True)
+        fig.update_yaxes(type="category", showgrid=False, fixedrange=True, automargin=True, ticksuffix="  ")
+    else:
+        # type="category" keeps the month labels as text instead of turning them into dates
+        fig.update_xaxes(showgrid=False, linecolor=CHART_LINE, type="category", fixedrange=True)
+        # "~s" writes 3500 as 3.5k, which fits a narrow screen
+        fig.update_yaxes(gridcolor=CHART_LINE, zeroline=False, tickprefix="$", tickformat="~s", fixedrange=True)
+    # load plotly.js from its CDN (cached by the browser) instead of pasting the whole library into every page
+    return plotly.io.to_html(fig, full_html=False, include_plotlyjs="cdn",
+                             config={"displayModeBar": False, "responsive": True})
+
+@app.template_filter("month_label")
+def month_label(value, style="long"):
+    # "2026-09" -> "September 2026", or "Sep 2026" with style="short"
+    try:
+        month = datetime.strptime(str(value)[:7], "%Y-%m")
+    except ValueError:
+        return value
+    return month.strftime("%b %Y" if style == "short" else "%B %Y")
+
+@app.template_filter("day_label")
+def day_label(value, style="short"):
+    # "2026-09-12" -> "Sat 12 Sep", or "12 Sep 2026" with style="year"
+    try:
+        day = datetime.strptime(str(value)[:10], "%Y-%m-%d")
+    except ValueError:
+        return value
+    if style == "year":
+        return f"{day.day} {day:%b %Y}"
+    return f"{day:%a} {day.day} {day:%b}"
 
 app.secret_key = os.environ.get("SECRET_KEY")
 if not app.secret_key:
@@ -215,9 +245,11 @@ def spending():
 
         total_saving = df["total_income"] - df["total_expense"]
         
+        # "Sep" over "2026", so the labels stay short on a phone
+        month_names = [month_label(month, "short").replace(" ", "<br>") for month in df["month"]]
         saving_fig = go.Figure(data=[
-            go.Bar(name="Income", x=df["month"].tolist(), y=df["total_income"].tolist(), marker_color=LIGHT_GREEN),
-            go.Bar(name="Saving", x=df["month"].tolist(), y=total_saving.tolist(), marker_color=DARK_GREEN)
+            go.Bar(name="Income", x=month_names, y=df["total_income"].tolist(), marker_color=DIM_GREEN),
+            go.Bar(name="Saved", x=month_names, y=total_saving.tolist(), marker_color=GREEN)
         ])
         saving_chart = style_chart(saving_fig)
         
@@ -264,15 +296,17 @@ def month_detail(month):
             daily_avg_expense = 0
             
         # bar chart of catefories
-        fig = go.Bar(x=total_category.index.tolist(),y=total_category.values.tolist(),
-                     marker_color=DARK_GREEN, text=total_category.values.round(0).tolist(),
+        # horizontal bars, biggest category on top (plotly draws the first one at the bottom)
+        by_size = total_category.sort_values()
+        fig = go.Bar(x=by_size.values.tolist(), y=by_size.index.tolist(), orientation="h",
+                     marker_color=GREEN, text=by_size.values.round(0).tolist(),
                      texttemplate="$%{text:,.0f}", textposition="outside", cliponaxis=False)
-        chart = style_chart(go.Figure(data=[fig]))
+        chart = style_chart(go.Figure(data=[fig]), height=60 + 44 * len(by_size), horizontal=True)
 
         fig2 = go.Pie(labels=top_3["category_name"].tolist(),values=top_3["amount"].tolist(),
-                      marker=dict(colors=[DARK_GREEN, MID_GREEN, LIGHT_GREEN], line=dict(color="#ffffff", width=2)),
+                      marker=dict(colors=[GREEN, MID_GREEN, DIM_GREEN], line=dict(color="#06140d", width=2)),
                       sort=False)
-        chart2 = style_chart(go.Figure(data=[fig2]), height=260)
+        chart2 = style_chart(go.Figure(data=[fig2]), height=230)
         
          
     else:

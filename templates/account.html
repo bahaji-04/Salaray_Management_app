@@ -3,28 +3,31 @@
 {% block title %}Account · Salary App{% endblock %}
 
 {% block content %}
-<div class="page-head">
-    <div>
-        <div class="eyebrow">Account</div>
-        <h1>Hello, {{ user.username }}</h1>
-    </div>
-</div>
+<h1 class="page-head">Account</h1>
 
-<div class="panel profile">
+<div class="card profile narrow">
     <span class="avatar big">{{ user.username[0]|upper }}</span>
     <div class="grow">
-        <div style="font-weight: 700;">{{ user.username }}</div>
-        <div class="muted" style="font-size: 14px;">Member since {{ user.time_created.strftime('%Y-%m-%d') }}</div>
+        <div class="t">{{ user.username }}</div>
+        <div class="muted small">Member since {{ user.time_created.strftime('%Y-%m-%d')|day_label('year') }}</div>
     </div>
-    <a class="btn ghost" href="/account/user-password">Change password</a>
 </div>
 
-<div class="panel danger-zone">
+<div class="list narrow">
+    <a class="row link" href="/account/user-password"><span class="grow t">Change password</span></a>
+</div>
+
+<form action="/logout" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn ghost block" type="submit">Log out</button>
+</form>
+
+<div class="card danger-zone narrow">
     <h2>Delete account</h2>
-    <p class="muted" style="margin-bottom: 14px;">This removes your entries, goals and login for good. It can't be undone.</p>
+    <p class="muted">This removes your entries, goals and login for good. It can't be undone.</p>
     <form action="/account/delete" method="post">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button class="btn danger" type="submit" onclick="return confirm('Are you sure? This cannot be undone.')">Delete account</button>
+        <button class="btn danger block" type="submit" onclick="return confirm('Are you sure? This cannot be undone.')">Delete account</button>
     </form>
 </div>
 {% endblock %}
